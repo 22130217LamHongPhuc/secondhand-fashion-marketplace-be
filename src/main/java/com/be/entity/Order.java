@@ -53,14 +53,6 @@ public class Order {
     @Builder.Default
     private BigDecimal shippingFee = BigDecimal.ZERO;
 
-    @Column(name = "discount_amount", nullable = false, precision = 15, scale = 2)
-    @Builder.Default
-    private BigDecimal discountAmount = BigDecimal.ZERO;
-
-    @Column(name = "total_amount", nullable = false, precision = 15, scale = 2)
-    @Builder.Default
-    private BigDecimal totalAmount = BigDecimal.ZERO;
-
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
     @Builder.Default

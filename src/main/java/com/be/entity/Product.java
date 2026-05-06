@@ -70,9 +70,7 @@ public class Product {
     @Builder.Default
     private Integer totalReviews = 0;
 
-    @Column(name = "total_sold", nullable = false)
-    @Builder.Default
-    private Integer totalSold = 0;
+
 
     @Column(name = "is_active", nullable = false)
     @Builder.Default
