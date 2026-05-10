@@ -8,9 +8,11 @@ import com.be.service.seller.SellerProductService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.ModelAttribute;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
@@ -28,8 +30,7 @@ public class SellerProductController {
     @GetMapping
     public ResponseEntity<ApiResponse<Page<Product>>> getListByPage(
             @RequestParam(required = false, defaultValue = "0") long lastId,
-            @RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "10") int size
+            @RequestParam(defaultValue = "0") int page
     ) {
         return ResponseEntity.ok(ApiResponse.success(
                 sellerProductService.getListByPage(lastId, page),
@@ -49,8 +50,7 @@ public class SellerProductController {
     public ResponseEntity<ApiResponse<Page<Product>>> getListByStatus(
             @RequestParam Boolean isActive,
             @RequestParam(required = false, defaultValue = "0") long lastId,
-            @RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "10") int size
+            @RequestParam(defaultValue = "0") int page
     ) {
         return ResponseEntity.ok(ApiResponse.success(
                 sellerProductService.getListByStatus(isActive, lastId, page),
@@ -58,9 +58,9 @@ public class SellerProductController {
         ));
     }
 
-    @PostMapping
+    @PostMapping(consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public ResponseEntity<ApiResponse<Product>> createProduct(
-            @Valid @RequestBody ProductCreateRequest request
+            @Valid @ModelAttribute ProductCreateRequest request
     ) {
         return ResponseEntity.ok(ApiResponse.success(
                 sellerProductService.createProduct(request),

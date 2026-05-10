@@ -25,8 +25,7 @@ public class SellerOrderController {
     @GetMapping
     public ResponseEntity<ApiResponse<Page<Order>>> getListByPage(
             @RequestParam(required = false) Long lastId,
-            @RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "10") int size
+            @RequestParam(defaultValue = "0") int page
     ) {
         return ResponseEntity.ok(ApiResponse.success(
                 sellerOrderService.getListByPage(lastId, page),
@@ -46,8 +45,7 @@ public class SellerOrderController {
     public ResponseEntity<ApiResponse<Page<Order>>> getListByStatus(
             @RequestParam OrderStatus status,
             @RequestParam(required = false) Long lastId,
-            @RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "10") int size
+            @RequestParam(defaultValue = "0") int page
     ) {
         return ResponseEntity.ok(ApiResponse.success(
                 sellerOrderService.getListByStatus(status, lastId, page),

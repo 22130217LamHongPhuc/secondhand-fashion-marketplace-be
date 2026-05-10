@@ -16,20 +16,28 @@ import com.be.entity.User;
 import com.be.repository.CategoryRepository;
 import com.be.repository.ProductRepository;
 import com.be.repository.ShopRepository;
+import com.be.service.ImageUploadExecutorService;
 import com.be.service.seller.SellerProductService;
 import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Page;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.multipart.MultipartFile;
 
+import java.io.ByteArrayOutputStream;
+import java.io.IOException;
+import java.io.InputStream;
 import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.CompletionException;
 
 @Service
 @RequiredArgsConstructor
@@ -37,6 +45,10 @@ public class SellerProductServiceImpl implements SellerProductService {
     private final ProductRepository productRepository;
     private final CategoryRepository categoryRepository;
     private final ShopRepository shopRepository;
+    private final ImageUploadExecutorService imageUploadExecutorService;
+
+    @Value("${cloudflare.r2.domain}")
+    private String cloudflareDomain;
 
     @Override
     public Page<Product> getListByPage(long lastId, int page) {
@@ -73,7 +85,7 @@ public class SellerProductServiceImpl implements SellerProductService {
                 .stockQuantity(request.stockQuantity())
                 .build();
 
-        product.setImages(buildImages(product, request.images()));
+        product.setImages(uploadAndBuildImages(product, request.images()));
         product.setAttributes(buildAttributes(product, request.attributes()));
         product.setTags(buildTags(product, request.tags()));
 
@@ -129,7 +141,7 @@ public class SellerProductServiceImpl implements SellerProductService {
                 product.setImages(new ArrayList<>());
             }
             product.getImages().clear();
-            product.getImages().addAll(buildImages(product, request.images()));
+            product.getImages().addAll(uploadAndBuildImages(product, request.images()));
         }
         if (request.attributes() != null) {
             if (product.getAttributes() == null) {
@@ -178,19 +190,57 @@ public class SellerProductServiceImpl implements SellerProductService {
                 .orElseThrow(() -> new EntityNotFoundException("Category not found with id: " + categoryId));
     }
 
-    private List<ProductImage> buildImages(Product product, List<ProductImageRequest> images) {
+    private List<ProductImage> uploadAndBuildImages(Product product, List<ProductImageRequest> images) {
         if (images == null) {
             return List.of();
         }
 
-        return images.stream()
-                .map(image -> ProductImage.builder()
+        List<CompletableFuture<ProductImage>> uploadTasks = images.stream()
+                .map(image -> uploadAndBuildImage(product, image))
+                .toList();
+
+        return uploadTasks.stream()
+                .map(this::joinImageUpload)
+                .toList();
+    }
+
+    private CompletableFuture<ProductImage> uploadAndBuildImage(Product product, ProductImageRequest image) {
+        MultipartFile file = image.file();
+        if (file == null || file.isEmpty()) {
+            throw new IllegalArgumentException("Image file is required");
+        }
+
+        byte[] data;
+        try {
+            data = toByteArray(file.getInputStream());
+        } catch (IOException exception) {
+            throw new IllegalArgumentException("Could not read image file", exception);
+        }
+
+        return imageUploadExecutorService.uploadImage(data, file.getOriginalFilename())
+                .thenApply(key -> ProductImage.builder()
                         .product(product)
-                        .url(image.url())
+                        .url(buildCloudflareImageUrl(key))
                         .sortOrder(image.sortOrder() == null ? 0 : image.sortOrder())
                         .isPrimary(Boolean.TRUE.equals(image.isPrimary()))
-                        .build())
-                .toList();
+                        .build());
+    }
+
+    private ProductImage joinImageUpload(CompletableFuture<ProductImage> uploadTask) {
+        try {
+            return uploadTask.join();
+        } catch (CompletionException exception) {
+            Throwable cause = exception.getCause() == null ? exception : exception.getCause();
+            throw new IllegalStateException("Could not upload image to Cloudflare R2", cause);
+        }
+    }
+
+    private String buildCloudflareImageUrl(String key) {
+        String normalizedDomain = cloudflareDomain.endsWith("/")
+                ? cloudflareDomain.substring(0, cloudflareDomain.length() - 1)
+                : cloudflareDomain;
+        String normalizedKey = key.startsWith("/") ? key.substring(1) : key;
+        return normalizedDomain + "/" + normalizedKey;
     }
 
     private List<ProductAttribute> buildAttributes(Product product, List<ProductAttributeRequest> attributes) {
@@ -225,4 +275,17 @@ public class SellerProductServiceImpl implements SellerProductService {
             throw new IllegalArgumentException("Sale price must be less than or equal to base price");
         }
     }
+
+    private byte[] toByteArray(InputStream inputStream) throws IOException {
+        ByteArrayOutputStream buffer = new ByteArrayOutputStream();
+        int nRead;
+        byte[] data = new byte[8192];
+
+        while ((nRead = inputStream.read(data, 0, data.length)) != -1) {
+            buffer.write(data, 0, nRead);
+        }
+        buffer.flush();
+        return buffer.toByteArray();
+    }
+
 }
