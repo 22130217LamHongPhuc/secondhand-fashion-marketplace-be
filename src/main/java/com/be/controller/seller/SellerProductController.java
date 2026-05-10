@@ -30,8 +30,7 @@ public class SellerProductController {
     @GetMapping
     public ResponseEntity<ApiResponse<Page<Product>>> getListByPage(
             @RequestParam(required = false, defaultValue = "0") long lastId,
-            @RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "10") int size
+            @RequestParam(defaultValue = "0") int page
     ) {
         return ResponseEntity.ok(ApiResponse.success(
                 sellerProductService.getListByPage(lastId, page),
@@ -51,8 +50,7 @@ public class SellerProductController {
     public ResponseEntity<ApiResponse<Page<Product>>> getListByStatus(
             @RequestParam Boolean isActive,
             @RequestParam(required = false, defaultValue = "0") long lastId,
-            @RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "10") int size
+            @RequestParam(defaultValue = "0") int page
     ) {
         return ResponseEntity.ok(ApiResponse.success(
                 sellerProductService.getListByStatus(isActive, lastId, page),
