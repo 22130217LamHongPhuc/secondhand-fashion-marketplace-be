@@ -1,18 +1,20 @@
 package com.be.service.seller.impl;
 
 import com.be.common.enums.OrderStatus;
+import com.be.constant.Constant;
 import com.be.entity.Order;
 import com.be.entity.OrderStatusLog;
-import com.be.entity.User;
 import com.be.repository.OrderRepository;
 import com.be.repository.OrderStatusLogRepository;
 import com.be.service.seller.SellerOrderService;
+import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
-import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.util.List;
+import java.time.YearMonth;
 
 @Service
 @RequiredArgsConstructor
@@ -21,94 +23,78 @@ public class SellerOrderServiceImpl implements SellerOrderService {
     private final OrderStatusLogRepository orderStatusLogRepository;
 
     @Override
-    public List<Order> getListByPage(Long lastId, int page) {
-        throw new UnsupportedOperationException("Not implemented yet");
+    public Page<Order> getListByPage(Long lastId, int page) {
+        long cursor = lastId == null ? 0L : lastId;
+        return orderRepository.getListByPage(cursor, PageRequest.of(page, Constant.ORDER_SIZE));
     }
 
     @Override
     public Order getDetails(Long id) {
-        throw new UnsupportedOperationException("Not implemented yet");
+        return orderRepository.findById(id)
+                .orElseThrow(() -> new EntityNotFoundException("Order not found with id: " + id));
     }
 
     @Override
-    public List<Order> getListByStatus(OrderStatus status, Long lastId, int page) {
-        throw new UnsupportedOperationException("Not implemented yet");
+    public Page<Order> getListByStatus(OrderStatus status, Long lastId, int page) {
+        long cursor = lastId == null ? 0L : lastId;
+        return orderRepository.getListByStatus(status.name(), cursor, PageRequest.of(page, Constant.ORDER_SIZE));
     }
 
     @Override
-    public Order createOrder(@AuthenticationPrincipal User user) {
-        throw new UnsupportedOperationException("Not implemented yet");
-    }
-
-    @Override
-    public Order updateOrder(Long id) {
-        throw new UnsupportedOperationException("Not implemented yet");
-    }
-
-    @Override
-    public void deleteOrder(Long id) {
-        throw new UnsupportedOperationException("Not implemented yet");
-    }
-
-    @Override
-    public List<Order> searchByKeyword(String keyword, int page) {
-        return List.of();
+    public Page<Order> getListByMonth(int year, int month, int page) {
+        YearMonth yearMonth = YearMonth.of(year, month);
+        return orderRepository.getListByMonth(
+                yearMonth.atDay(1).atStartOfDay(),
+                yearMonth.plusMonths(1).atDay(1).atStartOfDay(),
+                PageRequest.of(page, Constant.ORDER_SIZE)
+        );
     }
 
     @Override
     @Transactional
     public Order confirmOrder(Long orderId) {
-        return changeStatus(orderId, OrderStatus.CONFIRMED, "Order confirmed");
+        return updateOrderStatus(orderId, OrderStatus.CONFIRMED);
     }
 
     @Override
     @Transactional
     public Order startDelivery(Long orderId) {
-        return changeStatus(orderId, OrderStatus.SHIPPING, "Order started delivery");
+        return updateOrderStatus(orderId, OrderStatus.SHIPPING);
     }
 
     @Override
     @Transactional
     public Order completeOrder(Long orderId) {
-        return changeStatus(orderId, OrderStatus.DONE, "Order completed");
+        return updateOrderStatus(orderId, OrderStatus.DONE);
     }
 
     @Override
     @Transactional
     public Order cancelOrder(Long orderId, String cancelReason) {
-        Order order = changeStatus(orderId, OrderStatus.CANCELLED, cancelReason);
+        Order order = updateOrderStatus(orderId, OrderStatus.CANCELLED);
         order.setCancelReason(cancelReason);
         return orderRepository.save(order);
     }
 
-    private Order changeStatus(Long orderId, OrderStatus newStatus, String note) {
+    private Order updateOrderStatus(Long orderId, OrderStatus status) {
         Order order = orderRepository.findById(orderId)
                 .orElseThrow(() -> new IllegalArgumentException("Order not found with id: " + orderId));
 
-        validateStatusTransition(order.getStatus(), newStatus);
-        order.setStatus(newStatus);
-        Order savedOrder = orderRepository.save(order);
-
-        orderStatusLogRepository.save(OrderStatusLog.builder()
-                .order(savedOrder)
-                .status(newStatus)
-                .note(note)
-                .build());
-
-        return savedOrder;
+        validateStatusTransition(order.getStatus(), status);
+        order.setStatus(status);
+        return orderRepository.save(order);
     }
 
     private void validateStatusTransition(OrderStatus currentStatus, OrderStatus newStatus) {
-        boolean valid = switch (newStatus) {
-            case CONFIRMED -> currentStatus == OrderStatus.PENDING;
-            case SHIPPING -> currentStatus == OrderStatus.CONFIRMED;
-            case DONE -> currentStatus == OrderStatus.SHIPPING;
-            case CANCELLED -> currentStatus == OrderStatus.PENDING || currentStatus == OrderStatus.CONFIRMED;
-            case PENDING -> false;
+        boolean valid = switch (currentStatus) {
+            case PENDING -> newStatus == OrderStatus.CANCELLED || newStatus == OrderStatus.CONFIRMED;
+            case CONFIRMED -> newStatus == OrderStatus.SHIPPING;
+            case SHIPPING -> newStatus == OrderStatus.CANCELLED || newStatus == OrderStatus.DONE;
+            default -> false;
         };
 
         if (!valid) {
-            throw new IllegalStateException("Cannot change order status from " + currentStatus + " to " + newStatus);
+            throw new IllegalStateException("Unsuitable status");
         }
     }
 }

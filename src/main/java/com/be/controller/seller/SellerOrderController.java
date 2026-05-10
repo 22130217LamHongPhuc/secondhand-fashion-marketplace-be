@@ -3,21 +3,18 @@ package com.be.controller.seller;
 import com.be.common.enums.OrderStatus;
 import com.be.dto.response.ApiResponse;
 import com.be.entity.Order;
-import com.be.entity.User;
 import com.be.service.seller.SellerOrderService;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.core.annotation.AuthenticationPrincipal;
-import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
-import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
-import java.util.List;
+import java.time.LocalDate;
 
 @RestController
 @RequestMapping("/api/seller/orders")
@@ -26,7 +23,7 @@ public class SellerOrderController {
     private final SellerOrderService sellerOrderService;
 
     @GetMapping
-    public ResponseEntity<ApiResponse<List<Order>>> getListByPage(
+    public ResponseEntity<ApiResponse<Page<Order>>> getListByPage(
             @RequestParam(required = false) Long lastId,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "10") int size
@@ -46,7 +43,7 @@ public class SellerOrderController {
     }
 
     @GetMapping("/status")
-    public ResponseEntity<ApiResponse<List<Order>>> getListByStatus(
+    public ResponseEntity<ApiResponse<Page<Order>>> getListByStatus(
             @RequestParam OrderStatus status,
             @RequestParam(required = false) Long lastId,
             @RequestParam(defaultValue = "0") int page,
@@ -58,26 +55,15 @@ public class SellerOrderController {
         ));
     }
 
-    @PostMapping
-    public ResponseEntity<ApiResponse<Order>> createOrder(@AuthenticationPrincipal User user) {
+    @GetMapping("/current-month")
+    public ResponseEntity<ApiResponse<Page<Order>>> getListByCurrentMonth(
+            @RequestParam(defaultValue = "0") int page
+    ) {
+        LocalDate now = LocalDate.now();
         return ResponseEntity.ok(ApiResponse.success(
-                sellerOrderService.createOrder(user),
-                "Create order successfully"
+                sellerOrderService.getListByMonth(now.getYear(), now.getMonthValue(), page),
+                "Get current month order list successfully"
         ));
-    }
-
-    @PutMapping("/{id}")
-    public ResponseEntity<ApiResponse<Order>> updateOrder(@PathVariable Long id) {
-        return ResponseEntity.ok(ApiResponse.success(
-                sellerOrderService.updateOrder(id),
-                "Update order successfully"
-        ));
-    }
-
-    @DeleteMapping("/{id}")
-    public ResponseEntity<ApiResponse<Void>> deleteOrder(@PathVariable Long id) {
-        sellerOrderService.deleteOrder(id);
-        return ResponseEntity.ok(ApiResponse.success(null, "Delete order successfully"));
     }
 
     @PutMapping("/{id}/confirm")

@@ -1,20 +1,23 @@
 package com.be.controller.seller;
 
+import com.be.dto.request.seller.ProductCreateRequest;
+import com.be.dto.request.seller.ProductUpdateRequest;
 import com.be.dto.response.ApiResponse;
 import com.be.entity.Product;
 import com.be.service.seller.SellerProductService;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
+import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
-
-import java.util.List;
 
 @RestController
 @RequestMapping("/api/seller/products")
@@ -23,7 +26,7 @@ public class SellerProductController {
     private final SellerProductService sellerProductService;
 
     @GetMapping
-    public ResponseEntity<ApiResponse<List<Product>>> getListByPage(
+    public ResponseEntity<ApiResponse<Page<Product>>> getListByPage(
             @RequestParam(required = false, defaultValue = "0") long lastId,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "10") int size
@@ -43,7 +46,7 @@ public class SellerProductController {
     }
 
     @GetMapping("/status")
-    public ResponseEntity<ApiResponse<List<Product>>> getListByStatus(
+    public ResponseEntity<ApiResponse<Page<Product>>> getListByStatus(
             @RequestParam Boolean isActive,
             @RequestParam(required = false, defaultValue = "0") long lastId,
             @RequestParam(defaultValue = "0") int page,
@@ -56,17 +59,22 @@ public class SellerProductController {
     }
 
     @PostMapping
-    public ResponseEntity<ApiResponse<Product>> createProduct() {
+    public ResponseEntity<ApiResponse<Product>> createProduct(
+            @Valid @RequestBody ProductCreateRequest request
+    ) {
         return ResponseEntity.ok(ApiResponse.success(
-                sellerProductService.createProduct(),
+                sellerProductService.createProduct(request),
                 "Create product successfully"
         ));
     }
 
     @PutMapping("/{id}")
-    public ResponseEntity<ApiResponse<Product>> updateProduct(@PathVariable long id) {
+    public ResponseEntity<ApiResponse<Product>> updateProduct(
+            @PathVariable long id,
+            @Valid @RequestBody ProductUpdateRequest request
+    ) {
         return ResponseEntity.ok(ApiResponse.success(
-                sellerProductService.updateProduct(id),
+                sellerProductService.updateProduct(id, request),
                 "Update product successfully"
         ));
     }
