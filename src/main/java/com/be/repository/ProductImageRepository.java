@@ -8,9 +8,9 @@ import java.util.List;
 import java.util.Optional;
 
 @Repository
-public interface ProductImageRepository extends JpaRepository<ProductImage, String> {
-    List<ProductImage> findByProductIdOrderBySortOrder(String productId);
+public interface ProductImageRepository extends JpaRepository<ProductImage, Long> {
+    List<ProductImage> findByProductIdOrderBySortOrder(Long productId);
 
-    Optional<ProductImage> findByProductIdAndIsPrimaryTrue(String productId);
+    Optional<ProductImage> findByProductIdAndIsPrimaryTrue(Long productId);
 }
 

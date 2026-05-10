@@ -18,8 +18,8 @@ import java.time.LocalDateTime;
 @Builder
 public class OrderStatusLog {
     @Id
-    @Column(columnDefinition = "CHAR(36)")
-    private String id;
+    @GeneratedValue(strategy = GenerationType.AUTO)
+    private Long id;
 
     @ManyToOne
     @JoinColumn(name = "order_id", nullable = false)

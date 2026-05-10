@@ -9,10 +9,10 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.stereotype.Repository;
 
 @Repository
-public interface ProductRepository extends JpaRepository<Product, String> {
-    Page<Product> findByShopIdAndIsActiveTrue(String shopId, Pageable pageable);
+public interface ProductRepository extends JpaRepository<Product, Long> {
+    Page<Product> findByShopIdAndIsActiveTrue(Long shopId, Pageable pageable);
 
-    Page<Product> findByCategoryIdAndIsActiveTrue(String categoryId, Pageable pageable);
+    Page<Product> findByCategoryIdAndIsActiveTrue(Long categoryId, Pageable pageable);
 
     Page<Product> findByConditionAndIsActiveTrue(ProductCondition condition, Pageable pageable);
 

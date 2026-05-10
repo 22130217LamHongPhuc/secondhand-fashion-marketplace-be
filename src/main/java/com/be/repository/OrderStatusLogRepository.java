@@ -7,7 +7,7 @@ import org.springframework.stereotype.Repository;
 import java.util.List;
 
 @Repository
-public interface OrderStatusLogRepository extends JpaRepository<OrderStatusLog, String> {
-    List<OrderStatusLog> findByOrderIdOrderByCreatedAtDesc(String orderId);
+public interface OrderStatusLogRepository extends JpaRepository<OrderStatusLog, Long> {
+    List<OrderStatusLog> findByOrderIdOrderByCreatedAtDesc(Long orderId);
 }
 

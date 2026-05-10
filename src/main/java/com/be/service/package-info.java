@@ -1,3 +1,3 @@
-/** Business logic and domain services. */
+/** Service implementations. */
 package com.be.service;
 
