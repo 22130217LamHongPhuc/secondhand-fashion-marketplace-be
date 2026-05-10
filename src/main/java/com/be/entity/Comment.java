@@ -19,8 +19,8 @@ import java.time.LocalDateTime;
 @Builder
 public class Comment {
     @Id
-    @Column(columnDefinition = "CHAR(36)")
-    private String id;
+    @GeneratedValue(strategy = GenerationType.AUTO)
+    private Long id;
 
     @ManyToOne
     @JoinColumn(name = "product_id", nullable = false)

@@ -7,11 +7,11 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 
 @Repository
-public interface CommentRepository extends JpaRepository<Comment, String> {
-    Page<Comment> findByProductIdAndIsVisibleTrue(String productId, Pageable pageable);
+public interface CommentRepository extends JpaRepository<Comment, Long> {
+    Page<Comment> findByProductIdAndIsVisibleTrue(Long productId, Pageable pageable);
 
-    Page<Comment> findByProductIdAndParentIsNullAndIsVisibleTrue(String productId, Pageable pageable);
+    Page<Comment> findByProductIdAndParentIsNullAndIsVisibleTrue(Long productId, Pageable pageable);
 
-    Page<Comment> findByUserId(String userId, Pageable pageable);
+    Page<Comment> findByUserId(Long userId, Pageable pageable);
 }
 

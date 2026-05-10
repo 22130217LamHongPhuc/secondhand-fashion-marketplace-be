@@ -9,13 +9,13 @@ import org.springframework.stereotype.Repository;
 import java.util.Optional;
 
 @Repository
-public interface ReviewRepository extends JpaRepository<Review, String> {
-    Page<Review> findByProductId(String productId, Pageable pageable);
+public interface ReviewRepository extends JpaRepository<Review, Long> {
+    Page<Review> findByProductId(Long productId, Pageable pageable);
 
-    Page<Review> findByUserId(String userId, Pageable pageable);
+    Page<Review> findByUserId(Long userId, Pageable pageable);
 
-    Optional<Review> findByOrderIdAndProductId(String orderId, String productId);
+    Optional<Review> findByOrderIdAndProductId(Long orderId, Long productId);
 
-    long countByProductIdAndRating(String productId, Integer rating);
+    long countByProductIdAndRating(Long productId, Integer rating);
 }
 

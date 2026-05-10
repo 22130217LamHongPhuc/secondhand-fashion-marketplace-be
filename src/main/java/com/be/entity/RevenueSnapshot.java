@@ -18,8 +18,8 @@ import java.time.LocalDate;
 @Builder
 public class RevenueSnapshot {
     @Id
-    @Column(columnDefinition = "CHAR(36)")
-    private String id;
+    @GeneratedValue(strategy = GenerationType.AUTO)
+    private Long id;
 
     @ManyToOne
     @JoinColumn(name = "shop_id", nullable = false)

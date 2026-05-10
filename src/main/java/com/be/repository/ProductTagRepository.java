@@ -7,8 +7,8 @@ import org.springframework.stereotype.Repository;
 import java.util.List;
 
 @Repository
-public interface ProductTagRepository extends JpaRepository<ProductTag, String> {
-    List<ProductTag> findByProductId(String productId);
+public interface ProductTagRepository extends JpaRepository<ProductTag, Long> {
+    List<ProductTag> findByProductId(Long productId);
 
     long countByTag(String tag);
 }

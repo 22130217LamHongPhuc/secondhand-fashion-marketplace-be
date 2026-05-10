@@ -7,9 +7,9 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 
 @Repository
-public interface WalletTransactionRepository extends JpaRepository<WalletTransaction, String> {
-    Page<WalletTransaction> findByWalletId(String walletId, Pageable pageable);
+public interface WalletTransactionRepository extends JpaRepository<WalletTransaction, Long> {
+    Page<WalletTransaction> findByWalletId(Long walletId, Pageable pageable);
 
-    Page<WalletTransaction> findByOrderId(String orderId, Pageable pageable);
+    Page<WalletTransaction> findByOrderId(Long orderId, Pageable pageable);
 }
 

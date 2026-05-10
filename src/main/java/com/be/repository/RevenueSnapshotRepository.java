@@ -10,11 +10,11 @@ import java.time.LocalDate;
 import java.util.Optional;
 
 @Repository
-public interface RevenueSnapshotRepository extends JpaRepository<RevenueSnapshot, String> {
-    Page<RevenueSnapshot> findByShopId(String shopId, Pageable pageable);
+public interface RevenueSnapshotRepository extends JpaRepository<RevenueSnapshot, Long> {
+    Page<RevenueSnapshot> findByShopId(Long shopId, Pageable pageable);
 
-    Optional<RevenueSnapshot> findByShopIdAndSnapshotDate(String shopId, LocalDate snapshotDate);
+    Optional<RevenueSnapshot> findByShopIdAndSnapshotDate(Long shopId, LocalDate snapshotDate);
 
-    Page<RevenueSnapshot> findByShopIdAndSnapshotDateBetween(String shopId, LocalDate startDate, LocalDate endDate, Pageable pageable);
+    Page<RevenueSnapshot> findByShopIdAndSnapshotDateBetween(Long shopId, LocalDate startDate, LocalDate endDate, Pageable pageable);
 }
 

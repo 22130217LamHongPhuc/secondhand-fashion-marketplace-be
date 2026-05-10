@@ -16,8 +16,8 @@ import java.time.LocalDateTime;
 @Builder
 public class UserAddress {
     @Id
-    @Column(columnDefinition = "CHAR(36)")
-    private String id;
+    @GeneratedValue(strategy = GenerationType.AUTO)
+    private Long id;
 
     @ManyToOne
     @JoinColumn(name = "user_id", nullable = false)

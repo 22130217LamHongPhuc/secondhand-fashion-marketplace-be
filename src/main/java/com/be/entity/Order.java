@@ -27,8 +27,8 @@ import java.util.List;
 @Builder
 public class Order {
     @Id
-    @Column(columnDefinition = "CHAR(36)")
-    private String id;
+    @GeneratedValue(strategy = GenerationType.AUTO)
+    private Long id;
 
     @ManyToOne
     @JoinColumn(name = "customer_id", nullable = false)

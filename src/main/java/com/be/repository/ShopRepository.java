@@ -7,10 +7,10 @@ import org.springframework.stereotype.Repository;
 import java.util.Optional;
 
 @Repository
-public interface ShopRepository extends JpaRepository<Shop, String> {
+public interface ShopRepository extends JpaRepository<Shop, Long> {
     Optional<Shop> findBySlug(String slug);
 
-    Optional<Shop> findBySellerId(String sellerId);
+    Optional<Shop> findBySellerId(Long sellerId);
 
     long countByIsVerified(Boolean isVerified);
 }

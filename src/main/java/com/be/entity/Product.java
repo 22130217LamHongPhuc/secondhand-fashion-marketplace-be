@@ -14,7 +14,7 @@ import java.util.List;
 @Table(name = "products", indexes = {
     @Index(name = "idx_products_shop", columnList = "shop_id"),
     @Index(name = "idx_products_category", columnList = "category_id"),
-    @Index(name = "idx_products_condition", columnList = "condition"),
+    @Index(name = "idx_products_condition", columnList = "product_condition"),
     @Index(name = "idx_products_price", columnList = "sale_price,base_price"),
     @Index(name = "idx_products_created", columnList = "created_at")
 })
@@ -24,9 +24,8 @@ import java.util.List;
 @Builder
 public class Product {
     @Id
-    @Column(columnDefinition = "CHAR(36)")
-    private String id;
-
+    @GeneratedValue(strategy = GenerationType.AUTO)
+    private Long id;
     @ManyToOne
     @JoinColumn(name = "shop_id", nullable = false)
     private Shop shop;
@@ -48,7 +47,7 @@ public class Product {
     private String originCountry;
 
     @Enumerated(EnumType.STRING)
-    @Column(nullable = false)
+    @Column(name = "product_condition",nullable = false)
     @Builder.Default
     private ProductCondition condition = ProductCondition.GOOD;
 
@@ -69,8 +68,6 @@ public class Product {
     @Column(name = "total_reviews", nullable = false)
     @Builder.Default
     private Integer totalReviews = 0;
-
-
 
     @Column(name = "is_active", nullable = false)
     @Builder.Default
