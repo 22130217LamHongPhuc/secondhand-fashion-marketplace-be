@@ -55,11 +55,33 @@ public class AdminServiceImpl implements AdminService {
     }
 
     @Override
+    public User getUserById(Long userId) {
+        return userRepository.findById(userId)
+                .orElseThrow(() -> new RuntimeException("User not found with id: " + userId));
+    }
+
+    @Override
     @Transactional
     public User updateUserStatus(Long userId, boolean isActive) {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new RuntimeException("User not found"));
         user.setIsActive(isActive);
         return userRepository.save(user);
+    }
+
+    @Override
+    @Transactional
+    public void deleteUser(Long userId) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new RuntimeException("User not found with id: " + userId));
+        userRepository.delete(user);
+    }
+
+    @Override
+    @Transactional
+    public void deleteProduct(Long productId) {
+        productRepository.findById(productId)
+                .orElseThrow(() -> new RuntimeException("Product not found with id: " + productId));
+        productRepository.deleteById(productId);
     }
 }
