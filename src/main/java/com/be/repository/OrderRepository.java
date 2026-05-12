@@ -9,6 +9,7 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.Optional;
 
@@ -42,5 +43,8 @@ public interface OrderRepository extends JpaRepository<Order, Long> {
     Page<Order> findByShopIdAndStatus(Long shopId, OrderStatus status, Pageable pageable);
 
     long countByStatus(OrderStatus status);
+
+        @Query("SELECT COALESCE(SUM(o.subtotal), 0) FROM Order o")
+        BigDecimal sumTotalRevenue();
 }
 

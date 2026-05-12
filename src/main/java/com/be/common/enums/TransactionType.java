@@ -9,4 +9,3 @@ public enum TransactionType {
     REFUND,
     WITHDRAWAL
 }
-
