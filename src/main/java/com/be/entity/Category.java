@@ -17,11 +17,11 @@ import java.util.List;
 @Builder
 public class Category {
     @Id
-    @Column(columnDefinition = "CHAR(36)")
-    private String id;
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
 
     @ManyToOne
-    @JoinColumn(name = "parent_id", nullable = true)
+    @JoinColumn(name = "parent_id")
     private Category parent;
 
     @Column(nullable = false, length = 100)

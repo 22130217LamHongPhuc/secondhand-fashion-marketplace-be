@@ -7,11 +7,8 @@ import org.springframework.stereotype.Repository;
 import java.util.Optional;
 
 @Repository
-public interface ShopRepository extends JpaRepository<Shop, String> {
+public interface ShopRepository extends JpaRepository<Shop, Long> {
+    Optional<Shop> findBySellerId(Long sellerId);
     Optional<Shop> findBySlug(String slug);
-
-    Optional<Shop> findBySellerId(String sellerId);
-
-    long countByIsVerified(Boolean isVerified);
+    boolean existsBySlug(String slug);
 }
-

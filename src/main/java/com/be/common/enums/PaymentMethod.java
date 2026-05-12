@@ -8,4 +8,3 @@ public enum PaymentMethod {
     COD,
     BANK_TRANSFER
 }
-

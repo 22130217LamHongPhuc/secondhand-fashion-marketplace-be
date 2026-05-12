@@ -13,8 +13,8 @@ import lombok.*;
 @Builder
 public class ReviewImage {
     @Id
-    @Column(columnDefinition = "CHAR(36)")
-    private String id;
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
 
     @ManyToOne
     @JoinColumn(name = "review_id", nullable = false)

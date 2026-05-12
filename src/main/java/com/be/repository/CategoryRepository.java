@@ -8,11 +8,9 @@ import java.util.List;
 import java.util.Optional;
 
 @Repository
-public interface CategoryRepository extends JpaRepository<Category, String> {
+public interface CategoryRepository extends JpaRepository<Category, Long> {
     Optional<Category> findBySlug(String slug);
-
-    List<Category> findByParentIsNullAndIsActiveTrue();
-
-    List<Category> findByParentIdAndIsActiveTrue(String parentId);
+    List<Category> findByParentIsNull();
+    List<Category> findByParentId(Long parentId);
+    List<Category> findByIsActiveTrue();
 }
-

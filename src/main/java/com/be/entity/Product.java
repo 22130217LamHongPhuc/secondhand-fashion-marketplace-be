@@ -24,8 +24,8 @@ import java.util.List;
 @Builder
 public class Product {
     @Id
-    @Column(columnDefinition = "CHAR(36)")
-    private String id;
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
 
     @ManyToOne
     @JoinColumn(name = "shop_id", nullable = false)

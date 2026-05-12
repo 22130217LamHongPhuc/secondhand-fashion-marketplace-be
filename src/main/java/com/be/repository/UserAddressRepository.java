@@ -8,9 +8,7 @@ import java.util.List;
 import java.util.Optional;
 
 @Repository
-public interface UserAddressRepository extends JpaRepository<UserAddress, String> {
-    List<UserAddress> findByUserId(String userId);
-
-    Optional<UserAddress> findByUserIdAndIsDefaultTrue(String userId);
+public interface UserAddressRepository extends JpaRepository<UserAddress, Long> {
+    List<UserAddress> findByUserId(Long userId);
+    Optional<UserAddress> findByUserIdAndIsDefaultTrue(Long userId);
 }
-
