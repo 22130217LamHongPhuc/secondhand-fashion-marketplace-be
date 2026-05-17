@@ -14,18 +14,24 @@ import com.be.entity.Product;
 import com.be.entity.ProductAttribute;
 import com.be.entity.ProductImage;
 import com.be.entity.ProductTag;
+import com.be.entity.Role;
 import com.be.entity.Shop;
 import com.be.entity.User;
 import com.be.entity.UserAddress;
+import com.be.entity.UserRoleMapping;
 import com.be.repository.CategoryRepository;
 import com.be.repository.OrderRepository;
 import com.be.repository.ProductRepository;
+import com.be.repository.RoleRepository;
 import com.be.repository.ShopRepository;
 import com.be.repository.UserAddressRepository;
 import com.be.repository.UserRepository;
+import com.be.repository.UserRoleMappingRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.context.annotation.Profile;
+import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -51,7 +57,9 @@ public class SellerSeeder implements CommandLineRunner {
     private final CategoryRepository categoryRepository;
     private final ProductRepository productRepository;
     private final OrderRepository orderRepository;
-
+    private final RoleRepository roleRepository;
+    private final UserRoleMappingRepository userRoleMappingRepository;
+    private final PasswordEncoder encoder = new BCryptPasswordEncoder();
     @Override
     @Transactional
     public void run(String... args) {
@@ -150,31 +158,52 @@ public class SellerSeeder implements CommandLineRunner {
     }
 
     private User seedSeller() {
-        return userRepository.findByEmail(SELLER_EMAIL)
+        User seller = userRepository.findByEmail(SELLER_EMAIL)
                 .orElseGet(() -> userRepository.save(User.builder()
                         .email(SELLER_EMAIL)
-                        .passwordHash("{noop}password")
+                        .passwordHash(encoder.encode("{noop}password"))
                         .fullName("Seller Demo")
                         .phone("0900000001")
-                        .role(UserRole.SELLER)
                         .authProvider(AuthProvider.EMAIL)
                         .isActive(true)
                         .emailVerifiedAt(LocalDateTime.now())
                         .build()));
+        assignRole(seller, UserRole.SELLER);
+        return seller;
     }
 
     private User seedCustomer() {
-        return userRepository.findByEmail(CUSTOMER_EMAIL)
+        User customer = userRepository.findByEmail(CUSTOMER_EMAIL)
                 .orElseGet(() -> userRepository.save(User.builder()
                         .email(CUSTOMER_EMAIL)
-                        .passwordHash("{noop}password")
+                        .passwordHash(encoder.encode("{noop}password"))
                         .fullName("Customer Demo")
                         .phone("0900000002")
-                        .role(UserRole.CUSTOMER)
                         .authProvider(AuthProvider.EMAIL)
                         .isActive(true)
                         .emailVerifiedAt(LocalDateTime.now())
                         .build()));
+        assignRole(customer, UserRole.CUSTOMER);
+        return customer;
+    }
+
+    private Role seedRole(UserRole userRole) {
+        return roleRepository.findByName(userRole)
+                .orElseGet(() -> roleRepository.save(Role.builder()
+                        .name(userRole)
+                        .build()));
+    }
+
+    private void assignRole(User user, UserRole userRole) {
+        Role role = seedRole(userRole);
+        if (userRoleMappingRepository.existsByUserIdAndRoleId(user.getId(), role.getId())) {
+            return;
+        }
+
+        userRoleMappingRepository.save(UserRoleMapping.builder()
+                .user(user)
+                .role(role)
+                .build());
     }
 
     private UserAddress seedCustomerAddress(User customer) {
