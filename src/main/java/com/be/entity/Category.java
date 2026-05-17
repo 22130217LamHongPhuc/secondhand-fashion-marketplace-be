@@ -1,5 +1,6 @@
 package com.be.entity;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
 import lombok.*;
 
@@ -22,6 +23,7 @@ public class Category {
 
     @ManyToOne
     @JoinColumn(name = "parent_id", nullable = true)
+    @JsonIgnore
     private Category parent;
 
     @Column(nullable = false, length = 100)
@@ -42,10 +44,12 @@ public class Category {
     private Boolean isActive = true;
 
     // Relationships
-    @OneToMany(mappedBy = "parent", cascade = CascadeType.ALL, orphanRemoval = true)
+    @OneToMany(mappedBy = "parent", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
+    @JsonIgnore
     private List<Category> children;
 
-    @OneToMany(mappedBy = "category", cascade = CascadeType.ALL, orphanRemoval = true)
+    @OneToMany(mappedBy = "category", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
+    @JsonIgnore
     private List<Product> products;
 }
 
