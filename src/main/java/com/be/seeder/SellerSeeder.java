@@ -42,6 +42,8 @@ public class SellerSeeder implements CommandLineRunner {
     private static final String SELLER_EMAIL = "seller.demo@secondhand.local";
     private static final String CUSTOMER_EMAIL = "customer.demo@secondhand.local";
     private static final String SHOP_SLUG = "seller-demo-shop";
+    private static final int EXTRA_PRODUCTS_PER_STATUS = 12;
+    private static final int ORDERS_PER_STATUS = 12;
 
     private final UserRepository userRepository;
     private final UserAddressRepository userAddressRepository;
@@ -57,7 +59,9 @@ public class SellerSeeder implements CommandLineRunner {
         User customer = seedCustomer();
         UserAddress customerAddress = seedCustomerAddress(customer);
         Shop shop = seedShop(seller);
-
+        if(productRepository.count() > 0){
+            return;
+        }
         Category outerwear = seedCategory("Ao khoac", "ao-khoac", 10);
         Category denim = seedCategory("Denim", "denim", 20);
         Category accessories = seedCategory("Phu kien", "phu-kien", 30);
@@ -139,66 +143,10 @@ public class SellerSeeder implements CommandLineRunner {
                 List.of(attribute("size", "Free size"), attribute("color", "Brown check"))
         ));
 
-        seedOrder(
-                "SELLER-DEMO-PENDING",
-                customer,
-                customerAddress,
-                shop,
-                OrderStatus.PENDING,
-                PaymentStatus.UNPAID,
-                PaymentMethod.COD,
-                null,
-                products.get(0),
-                1
-        );
-        seedOrder(
-                "SELLER-DEMO-CONFIRMED",
-                customer,
-                customerAddress,
-                shop,
-                OrderStatus.CONFIRMED,
-                PaymentStatus.PAID,
-                PaymentMethod.WALLET,
-                null,
-                products.get(1),
-                1
-        );
-        seedOrder(
-                "SELLER-DEMO-SHIPPING",
-                customer,
-                customerAddress,
-                shop,
-                OrderStatus.SHIPPING,
-                PaymentStatus.PAID,
-                PaymentMethod.BANK_TRANSFER,
-                null,
-                products.get(2),
-                2
-        );
-        seedOrder(
-                "SELLER-DEMO-DONE",
-                customer,
-                customerAddress,
-                shop,
-                OrderStatus.DONE,
-                PaymentStatus.PAID,
-                PaymentMethod.WALLET,
-                null,
-                products.get(3),
-                1
-        );
-        seedOrder(
-                "SELLER-DEMO-CANCELLED",
-                customer,
-                customerAddress,
-                shop,
-                OrderStatus.CANCELLED,
-                PaymentStatus.REFUNDED,
-                PaymentMethod.WALLET,
-                "Khach doi y sau khi dat hang",
-                products.get(0),
-                1
-        );
+        products.addAll(seedProductBatch(shop, outerwear, denim, accessories, true));
+        products.addAll(seedProductBatch(shop, outerwear, denim, accessories, false));
+
+        seedOrdersByStatus(customer, customerAddress, shop, products);
     }
 
     private User seedSeller() {
@@ -400,6 +348,91 @@ public class SellerSeeder implements CommandLineRunner {
                 .attrKey(key)
                 .attrValue(value)
                 .build();
+    }
+
+    private List<Product> seedProductBatch(
+            Shop shop,
+            Category outerwear,
+            Category denim,
+            Category accessories,
+            boolean isActive
+    ) {
+        List<Category> categories = List.of(outerwear, denim, accessories);
+        List<String> productTypes = List.of("Ao so mi", "Quan tay", "Chan vay", "Ao khoac", "Tui deo cheo", "Khan lua");
+        List<String> colors = List.of("Trang", "Den", "Xanh navy", "Xam", "Nau", "Xanh reu");
+        List<String> sizes = List.of("S", "M", "L", "XL", "Free size");
+        List<ProductCondition> conditions = List.of(
+                ProductCondition.NEW,
+                ProductCondition.LIKE_NEW,
+                ProductCondition.GOOD,
+                ProductCondition.FAIR
+        );
+        List<Product> products = new ArrayList<>();
+        String statusText = isActive ? "active" : "inactive";
+
+        for (int i = 1; i <= EXTRA_PRODUCTS_PER_STATUS; i++) {
+            String productType = productTypes.get((i - 1) % productTypes.size());
+            String color = colors.get((i - 1) % colors.size());
+            String size = sizes.get((i - 1) % sizes.size());
+            BigDecimal basePrice = BigDecimal.valueOf(240000L + (long) i * 35000L);
+            BigDecimal salePrice = basePrice.subtract(BigDecimal.valueOf(25000L));
+
+            products.add(seedProduct(
+                    shop,
+                    categories.get((i - 1) % categories.size()),
+                    String.format("%s secondhand %s %02d", productType, statusText, i),
+                    String.format("Du lieu mau %s de kiem thu phan trang danh sach san pham seller.", statusText),
+                    i % 2 == 0 ? "Vintage Select" : "Local Brand",
+                    i % 3 == 0 ? "Japan" : "Vietnam",
+                    conditions.get((i - 1) % conditions.size()),
+                    basePrice.toPlainString(),
+                    salePrice.toPlainString(),
+                    isActive ? 3 + i : 0,
+                    isActive,
+                    List.of(statusText, "seller-demo", productType.toLowerCase().replace(" ", "-")),
+                    List.of(attribute("size", size), attribute("color", color), attribute("batch", statusText))
+            ));
+        }
+
+        return products;
+    }
+
+    private void seedOrdersByStatus(
+            User customer,
+            UserAddress customerAddress,
+            Shop shop,
+            List<Product> products
+    ) {
+        for (OrderStatus status : OrderStatus.values()) {
+            for (int i = 1; i <= ORDERS_PER_STATUS; i++) {
+                Product product = products.get((i - 1) % products.size());
+                seedOrder(
+                        String.format("SELLER-%s-%02d", status.name(), i),
+                        customer,
+                        customerAddress,
+                        shop,
+                        status,
+                        paymentStatusFor(status),
+                        paymentMethodFor(i),
+                        status == OrderStatus.CANCELLED ? "Khach doi y sau khi dat hang" : null,
+                        product,
+                        i % 3 + 1
+                );
+            }
+        }
+    }
+
+    private PaymentStatus paymentStatusFor(OrderStatus status) {
+        return switch (status) {
+            case PENDING -> PaymentStatus.UNPAID;
+            case CANCELLED -> PaymentStatus.REFUNDED;
+            case CONFIRMED, SHIPPING, DONE -> PaymentStatus.PAID;
+        };
+    }
+
+    private PaymentMethod paymentMethodFor(int index) {
+        PaymentMethod[] methods = PaymentMethod.values();
+        return methods[(index - 1) % methods.length];
     }
 
     private List<ProductTag> bindTags(Product product, List<String> tags) {

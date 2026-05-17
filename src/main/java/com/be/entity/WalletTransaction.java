@@ -1,5 +1,6 @@
 package com.be.entity;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
 import lombok.*;
 import org.hibernate.annotations.CreationTimestamp;
@@ -24,10 +25,12 @@ public class WalletTransaction {
 
     @ManyToOne
     @JoinColumn(name = "wallet_id", nullable = false)
+    @JsonIgnore
     private Wallet wallet;
 
     @ManyToOne
     @JoinColumn(name = "order_id", nullable = true)
+    @JsonIgnore
     private Order order;
 
     @Enumerated(EnumType.STRING)

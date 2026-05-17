@@ -1,5 +1,6 @@
 package com.be.entity;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
 import lombok.*;
 import org.hibernate.annotations.CreationTimestamp;
@@ -23,6 +24,7 @@ public class OrderStatusLog {
 
     @ManyToOne
     @JoinColumn(name = "order_id", nullable = false)
+    @JsonIgnore
     private Order order;
 
     @Enumerated(EnumType.STRING)
@@ -34,6 +36,7 @@ public class OrderStatusLog {
 
     @ManyToOne
     @JoinColumn(name = "changed_by", nullable = true)
+    @JsonIgnore
     private User changedBy;
 
     @CreationTimestamp
