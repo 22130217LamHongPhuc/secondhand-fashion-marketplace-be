@@ -94,7 +94,7 @@ public class OrderResponse {
                                 .quantity(item.getQuantity())
                                 .subtotal(item.getSubtotal())
                                 .build())
-                        .collect(Collectors.toList()) : List.of())
+                        .collect(Collectors.toList()) : java.util.List.of())
                 .build();
     }
 }

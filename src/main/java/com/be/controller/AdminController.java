@@ -7,6 +7,7 @@ import com.be.service.OrderService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -31,7 +32,10 @@ public class AdminController {
     // ============ USER MANAGEMENT ============
     
     @GetMapping("/users")
-    public ResponseEntity<PagedResponse<UserResponse>> getUsers(Pageable pageable) {
+    public ResponseEntity<PagedResponse<UserResponse>> getUsers(
+            @RequestParam(defaultValue = "1") int page,
+            @RequestParam(defaultValue = "10") int limit) {
+        Pageable pageable = PageRequest.of(page > 0 ? page - 1 : 0, limit);
         Page<UserResponse> users = adminService.getAllUsers(pageable)
                 .map(UserResponse::fromEntity);
         return ResponseEntity.ok(PagedResponse.fromPage(users));
@@ -103,8 +107,10 @@ public class AdminController {
     
     @GetMapping("/orders")
     public ResponseEntity<PagedResponse<OrderResponse>> getOrders(
-            Pageable pageable,
+            @RequestParam(defaultValue = "1") int page,
+            @RequestParam(defaultValue = "10") int limit,
             @RequestParam(required = false) String status) {
+        Pageable pageable = PageRequest.of(page > 0 ? page - 1 : 0, limit);
         Page<OrderResponse> orders;
         
         if (status != null && !status.isEmpty() && !status.equalsIgnoreCase("all")) {

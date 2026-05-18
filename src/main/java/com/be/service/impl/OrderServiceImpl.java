@@ -19,16 +19,19 @@ public class OrderServiceImpl implements OrderService {
     private final OrderRepository orderRepository;
 
     @Override
+    @Transactional(readOnly = true)
     public Page<Order> getAllOrders(Pageable pageable) {
         return orderRepository.findAll(pageable);
     }
 
     @Override
+    @Transactional(readOnly = true)
     public Page<Order> getOrdersByStatus(OrderStatus status, Pageable pageable) {
         return orderRepository.findByStatus(status, pageable);
     }
 
     @Override
+    @Transactional(readOnly = true)
     public Order getOrderById(Long id) {
         return orderRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Order not found with id: " + id));
@@ -40,7 +43,7 @@ public class OrderServiceImpl implements OrderService {
         Order order = getOrderById(orderId);
         order.setStatus(status);
         
-        if (status == OrderStatus.DELIVERED) {
+        if (status == OrderStatus.DONE) {
             order.setDeliveredAt(LocalDateTime.now());
         }
         
@@ -52,7 +55,7 @@ public class OrderServiceImpl implements OrderService {
     public Order cancelOrder(Long orderId, String reason) {
         Order order = getOrderById(orderId);
         
-        if (order.getStatus() == OrderStatus.DELIVERED || order.getStatus() == OrderStatus.CANCELLED) {
+        if (order.getStatus() == OrderStatus.DONE || order.getStatus() == OrderStatus.CANCELLED) {
             throw new RuntimeException("Cannot cancel order with status: " + order.getStatus());
         }
         

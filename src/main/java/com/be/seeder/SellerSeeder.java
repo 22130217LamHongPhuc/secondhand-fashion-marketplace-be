@@ -36,7 +36,7 @@ import java.util.List;
 import java.util.Objects;
 
 @Component
-@Profile("!prod & !test")
+@Profile("seed")
 @RequiredArgsConstructor
 public class SellerSeeder implements CommandLineRunner {
     private static final String SELLER_EMAIL = "seller.demo@secondhand.local";
