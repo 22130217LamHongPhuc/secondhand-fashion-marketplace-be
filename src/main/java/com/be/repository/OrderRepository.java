@@ -10,6 +10,7 @@ import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
 import java.time.LocalDateTime;
+import java.util.List;
 import java.util.Optional;
 
 @Repository
@@ -42,5 +43,19 @@ public interface OrderRepository extends JpaRepository<Order, Long> {
     Page<Order> findByShopIdAndStatus(Long shopId, OrderStatus status, Pageable pageable);
 
     long countByStatus(OrderStatus status);
+
+    @Query("""
+            SELECT o.shop.id
+            FROM Order o
+            WHERE o.createdAt >= :startAt
+              AND o.status <> :excludedStatus
+            GROUP BY o.shop.id
+            ORDER BY COUNT(o.id) DESC
+            """)
+    List<Long> findTopShopIdsByOrderCountSince(
+            @Param("startAt") LocalDateTime startAt,
+            @Param("excludedStatus") OrderStatus excludedStatus,
+            Pageable pageable
+    );
 }
 
