@@ -16,6 +16,7 @@ public class SecurityConfig {
         http
                 .csrf(AbstractHttpConfigurer::disable)
                 .authorizeHttpRequests(auth -> auth
+                       .requestMatchers("/favicon.ico").permitAll()
                         .anyRequest().permitAll()
                 );
 
