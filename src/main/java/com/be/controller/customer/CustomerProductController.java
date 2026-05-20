@@ -7,6 +7,8 @@ import com.be.dto.response.customer.ProductDetailResponse;
 import com.be.dto.request.customer.ReviewCreateRequest;
 import com.be.dto.response.customer.ReviewCreateResponse;
 import com.be.dto.response.customer.ShopDetailWithProductsResponse;
+import com.be.dto.response.customer.ShopProductPageResponse;
+import com.be.dto.response.customer.ShopPageResponse;
 import com.be.service.customer.CustomerProductService;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
@@ -64,6 +66,38 @@ public class CustomerProductController {
 		));
 	}
 
+	// New endpoint: Get products by category with pagination
+	@GetMapping("/categories/{categoryId}/products")
+	public ResponseEntity<ApiResponse<ShopProductPageResponse>> getProductsByCategory(
+			@PathVariable Long categoryId,
+			@RequestParam(defaultValue = "0") @Min(0) int page,
+			@RequestParam(defaultValue = "10") @Min(1) @Max(50) int size
+	) {
+		return ResponseEntity.ok(ApiResponse.success(
+				customerProductService.getProductsByCategory(categoryId, page, size),
+				"Lay danh sach san pham theo the loai thanh cong"
+		));
+	}
+
+	@GetMapping("/products")
+	public ResponseEntity<ApiResponse<ShopProductPageResponse>> filterAndSortProducts(
+			@RequestParam(required = false) String keyword,
+			@RequestParam(required = false) List<Long> categoryIds,
+			@RequestParam(required = false) String condition,
+			@RequestParam(required = false) List<String> brands,
+			@RequestParam(required = false) List<String> origins,
+			@RequestParam(required = false) java.math.BigDecimal minPrice,
+			@RequestParam(required = false) java.math.BigDecimal maxPrice,
+			@RequestParam(defaultValue = "newest") String sort,
+			@RequestParam(defaultValue = "0") @Min(0) int page,
+			@RequestParam(defaultValue = "10") @Min(1) @Max(50) int size
+	) {
+		return ResponseEntity.ok(ApiResponse.success(
+				customerProductService.filterAndSortProducts(keyword, categoryIds, condition, brands, origins, minPrice, maxPrice, sort, page, size),
+				"Lay danh sach san pham theo filter va sort thanh cong"
+		));
+	}
+
 	@GetMapping("/products/{id}")
 	public ResponseEntity<ApiResponse<ProductDetailResponse>> getProductDetail(@PathVariable Long id) {
 		return ResponseEntity.ok(ApiResponse.success(
@@ -81,6 +115,25 @@ public class CustomerProductController {
 		return ResponseEntity.ok(ApiResponse.success(
 				customerProductService.getShopDetailWithProducts(shopId, page, size),
 				"Lay thong tin shop va san pham thanh cong"
+		));
+	}
+
+	@GetMapping("/shops")
+	public ResponseEntity<ApiResponse<ShopPageResponse>> listOrSearchShops(
+			@RequestParam(required = false) String keyword,
+			@RequestParam(defaultValue = "0") @Min(0) int page,
+				@RequestParam(defaultValue = "10") @Min(1) @Max(50) int size
+	) {
+		if (keyword == null || keyword.isBlank()) {
+			return ResponseEntity.ok(ApiResponse.success(
+					customerProductService.listShops(page, size),
+					"Lay danh sach shop thanh cong"
+				));
+		}
+
+		return ResponseEntity.ok(ApiResponse.success(
+				customerProductService.searchShopsByName(keyword, page, size),
+				"Tim kiem shop theo ten thanh cong"
 		));
 	}
 

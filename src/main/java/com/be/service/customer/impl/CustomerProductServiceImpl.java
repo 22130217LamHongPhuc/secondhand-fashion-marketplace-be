@@ -24,6 +24,7 @@ import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
+import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
@@ -145,6 +146,207 @@ public class CustomerProductServiceImpl implements CustomerProductService {
                         productPage.hasPrevious()
                 )
         );
+    }
+
+    @Override
+    public ShopProductPageResponse getProductsByCategory(Long categoryId, int page, int size) {
+        if (categoryId == null) {
+            throw new IllegalArgumentException("categoryId is required");
+        }
+
+        var pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "createdAt", "id"));
+        var productPage = productRepository.findByCategoryIdAndIsActiveTrue(categoryId, pageable);
+
+        var items = productPage.getContent().stream()
+                .map(this::toProductCard)
+                .toList();
+
+        return new ShopProductPageResponse(
+                items,
+                productPage.getNumber(),
+                productPage.getSize(),
+                productPage.getTotalElements(),
+                productPage.getTotalPages(),
+                productPage.hasNext(),
+                productPage.hasPrevious()
+        );
+    }
+
+    @Override
+    public ShopPageResponse listShops(int page, int size) {
+        var pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "createdAt", "id"));
+        var shopPage = shopRepository.findByIsActiveTrue(pageable);
+
+        var items = shopPage.getContent().stream()
+                .map(shop -> new ShopInfoResponse(
+                        shop.getId(),
+                        shop.getName(),
+                        shop.getSlug(),
+                        shop.getDescription(),
+                        shop.getAvatarUrl(),
+                        shop.getBannerUrl(),
+                        shop.getRatingAvg(),
+                        shop.getTotalReviews(),
+                        shop.getIsActive(),
+                        shop.getIsVerified(),
+                        shop.getCreatedAt()
+                ))
+                .toList();
+
+        return new ShopPageResponse(
+                items,
+                shopPage.getNumber(),
+                shopPage.getSize(),
+                shopPage.getTotalElements(),
+                shopPage.getTotalPages(),
+                shopPage.hasNext(),
+                shopPage.hasPrevious()
+        );
+    }
+
+    @Override
+    public ShopPageResponse searchShopsByName(String keyword, int page, int size) {
+        if (keyword == null || keyword.isBlank()) {
+            return listShops(page, size);
+        }
+
+        var pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "createdAt", "id"));
+        var shopPage = shopRepository.findByNameContainingIgnoreCaseAndIsActiveTrue(keyword.trim(), pageable);
+
+        var items = shopPage.getContent().stream()
+                .map(shop -> new ShopInfoResponse(
+                        shop.getId(),
+                        shop.getName(),
+                        shop.getSlug(),
+                        shop.getDescription(),
+                        shop.getAvatarUrl(),
+                        shop.getBannerUrl(),
+                        shop.getRatingAvg(),
+                        shop.getTotalReviews(),
+                        shop.getIsActive(),
+                        shop.getIsVerified(),
+                        shop.getCreatedAt()
+                ))
+                .toList();
+
+        return new ShopPageResponse(
+                items,
+                shopPage.getNumber(),
+                shopPage.getSize(),
+                shopPage.getTotalElements(),
+                shopPage.getTotalPages(),
+                shopPage.hasNext(),
+                shopPage.hasPrevious()
+        );
+    }
+
+    @Override
+    public ShopProductPageResponse filterAndSortProducts(
+            String keyword,
+            List<Long> categoryIds,
+            String condition,
+            List<String> brands,
+            List<String> origins,
+            BigDecimal minPrice,
+            BigDecimal maxPrice,
+            String sort,
+            int page,
+            int size
+    ) {
+        Sort sortObj = mapSortParameter(sort);
+        var pageable = PageRequest.of(page, size, sortObj);
+
+        Specification<Product> spec = isActiveTrue();
+        spec = andIfPresent(spec, stockGreaterThanZero());
+        spec = andIfPresent(spec, keywordContains(keyword));
+        spec = andIfPresent(spec, categoriesIn(categoryIds));
+        spec = andIfPresent(spec, conditionEquals(condition));
+        spec = andIfPresent(spec, brandsIn(brands));
+        spec = andIfPresent(spec, originsIn(origins));
+        spec = andIfPresent(spec, priceBetween(minPrice, maxPrice));
+
+        var productPage = productRepository.findAll(spec, pageable);
+
+        var items = productPage.getContent().stream()
+                .map(this::toProductCard)
+                .toList();
+
+        return new ShopProductPageResponse(
+                items,
+                productPage.getNumber(),
+                productPage.getSize(),
+                productPage.getTotalElements(),
+                productPage.getTotalPages(),
+                productPage.hasNext(),
+                productPage.hasPrevious()
+        );
+    }
+
+    private Sort mapSortParameter(String sort) {
+        if (sort == null) return Sort.by(Sort.Direction.DESC, "createdAt", "id");
+        return switch (sort.toLowerCase()) {
+            case "price_asc" -> Sort.by(Sort.Direction.ASC, "salePrice", "basePrice", "id");
+            case "price_desc" -> Sort.by(Sort.Direction.DESC, "salePrice", "basePrice", "id");
+            case "rating" -> Sort.by(Sort.Direction.DESC, "ratingAvg", "totalReviews", "id");
+            case "newest" -> Sort.by(Sort.Direction.DESC, "createdAt", "id");
+            default -> Sort.by(Sort.Direction.DESC, "createdAt", "id");
+        };
+    }
+
+    // Specifications
+    private Specification<Product> isActiveTrue() {
+        return (root, query, cb) -> cb.isTrue(root.get("isActive"));
+    }
+
+    private Specification<Product> stockGreaterThanZero() {
+        return (root, query, cb) -> cb.greaterThan(root.get("stockQuantity"), 0);
+    }
+
+    private Specification<Product> andIfPresent(Specification<Product> base, Specification<Product> next) {
+        return next == null ? base : base.and(next);
+    }
+
+    private Specification<Product> keywordContains(String keyword) {
+        if (keyword == null || keyword.isBlank()) return null;
+
+        String likeKeyword = "%" + keyword.trim().toLowerCase() + "%";
+        return (root, query, cb) -> cb.or(
+                cb.like(cb.lower(root.get("name")), likeKeyword),
+                cb.like(cb.lower(root.get("brand")), likeKeyword)
+        );
+    }
+
+    private Specification<Product> categoriesIn(List<Long> categoryIds) {
+        if (categoryIds == null || categoryIds.isEmpty()) return null;
+        return (root, query, cb) -> root.get("category").get("id").in(categoryIds);
+    }
+
+    private Specification<Product> conditionEquals(String condition) {
+        if (condition == null || condition.isBlank()) return null;
+        return (root, query, cb) -> cb.equal(root.get("condition"), com.be.common.enums.ProductCondition.valueOf(condition));
+    }
+
+    private Specification<Product> brandsIn(List<String> brands) {
+        if (brands == null || brands.isEmpty()) return null;
+        return (root, query, cb) -> root.get("brand").in(brands);
+    }
+
+    private Specification<Product> originsIn(List<String> origins) {
+        if (origins == null || origins.isEmpty()) return null;
+        return (root, query, cb) -> root.get("originCountry").in(origins);
+    }
+
+    private Specification<Product> priceBetween(BigDecimal minPrice, BigDecimal maxPrice) {
+        if (minPrice == null && maxPrice == null) return null;
+        return (root, query, cb) -> {
+            if (minPrice != null && maxPrice != null) {
+                return cb.between(root.get("salePrice"), minPrice, maxPrice);
+            } else if (minPrice != null) {
+                return cb.greaterThanOrEqualTo(root.get("salePrice"), minPrice);
+            } else {
+                return cb.lessThanOrEqualTo(root.get("salePrice"), maxPrice);
+            }
+        };
     }
 
     @Override
@@ -484,6 +686,4 @@ public class CustomerProductServiceImpl implements CustomerProductService {
         }
     }
 }
-
-
 
