@@ -8,6 +8,8 @@ import java.util.Optional;
 
 @Repository
 public interface ShopRepository extends JpaRepository<Shop, Long> {
+    Optional<Shop> findByIdAndIsActiveTrue(Long id);
+
     Optional<Shop> findBySlug(String slug);
 
     Optional<Shop> findBySellerId(Long sellerId);
