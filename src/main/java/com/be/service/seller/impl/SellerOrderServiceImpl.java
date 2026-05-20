@@ -2,6 +2,10 @@ package com.be.service.seller.impl;
 
 import com.be.common.enums.OrderStatus;
 import com.be.constant.Constant;
+import com.be.dto.response.seller.OrderListResponse;
+import com.be.dto.response.seller.OrderDetailResponse;
+import com.be.dto.response.seller.OrderActionResponse;
+import com.be.dto.response.seller.mapper.SellerOrderMapper;
 import com.be.entity.Order;
 import com.be.entity.OrderStatusLog;
 import com.be.repository.OrderRepository;
@@ -23,57 +27,65 @@ public class SellerOrderServiceImpl implements SellerOrderService {
     private final OrderStatusLogRepository orderStatusLogRepository;
 
     @Override
-    public Page<Order> getListByPage(Long lastId, int page) {
+    public Page<OrderListResponse> getListByPage(Long lastId, int page) {
         long cursor = lastId == null ? 0L : lastId;
-        return orderRepository.getListByPage(cursor, PageRequest.of(page, Constant.ORDER_SIZE));
+        Page<Order> orders = orderRepository.getListByPage(cursor, PageRequest.of(page, Constant.ORDER_SIZE));
+        return orders.map(SellerOrderMapper::toListResponse);
     }
 
     @Override
-    public Order getDetails(Long id) {
-        return orderRepository.findById(id)
+    public OrderDetailResponse getDetails(Long id) {
+        Order order = orderRepository.findByIdWithDetails(id)
                 .orElseThrow(() -> new EntityNotFoundException("Order not found with id: " + id));
+        return SellerOrderMapper.toDetailResponse(order);
     }
 
     @Override
-    public Page<Order> getListByStatus(OrderStatus status, Long lastId, int page) {
+    public Page<OrderListResponse> getListByStatus(OrderStatus status, Long lastId, int page) {
         long cursor = lastId == null ? 0L : lastId;
-        return orderRepository.getListByStatus(status.name(), cursor, PageRequest.of(page, Constant.ORDER_SIZE));
+        Page<Order> orders = orderRepository.getListByStatus(status, cursor, PageRequest.of(page, Constant.ORDER_SIZE));
+        return orders.map(SellerOrderMapper::toListResponse);
     }
 
     @Override
-    public Page<Order> getListByMonth(int year, int month, int page) {
+    public Page<OrderListResponse> getListByMonth(int year, int month, int page) {
         YearMonth yearMonth = YearMonth.of(year, month);
-        return orderRepository.getListByMonth(
+        Page<Order> orders = orderRepository.getListByMonth(
                 yearMonth.atDay(1).atStartOfDay(),
                 yearMonth.plusMonths(1).atDay(1).atStartOfDay(),
                 PageRequest.of(page, Constant.ORDER_SIZE)
         );
+        return orders.map(SellerOrderMapper::toListResponse);
     }
 
     @Override
     @Transactional
-    public Order confirmOrder(Long orderId) {
-        return updateOrderStatus(orderId, OrderStatus.CONFIRMED);
+    public OrderActionResponse confirmOrder(Long orderId) {
+        Order order = updateOrderStatus(orderId, OrderStatus.CONFIRMED);
+        return SellerOrderMapper.toActionResponse(order);
     }
 
     @Override
     @Transactional
-    public Order startDelivery(Long orderId) {
-        return updateOrderStatus(orderId, OrderStatus.SHIPPING);
+    public OrderActionResponse startDelivery(Long orderId) {
+        Order order = updateOrderStatus(orderId, OrderStatus.SHIPPING);
+        return SellerOrderMapper.toActionResponse(order);
     }
 
     @Override
     @Transactional
-    public Order completeOrder(Long orderId) {
-        return updateOrderStatus(orderId, OrderStatus.DONE);
+    public OrderActionResponse completeOrder(Long orderId) {
+        Order order = updateOrderStatus(orderId, OrderStatus.DONE);
+        return SellerOrderMapper.toActionResponse(order);
     }
 
     @Override
     @Transactional
-    public Order cancelOrder(Long orderId, String cancelReason) {
+    public OrderActionResponse cancelOrder(Long orderId, String cancelReason) {
         Order order = updateOrderStatus(orderId, OrderStatus.CANCELLED);
         order.setCancelReason(cancelReason);
-        return orderRepository.save(order);
+        Order savedOrder = orderRepository.save(order);
+        return SellerOrderMapper.toActionResponse(savedOrder);
     }
 
     private Order updateOrderStatus(Long orderId, OrderStatus status) {

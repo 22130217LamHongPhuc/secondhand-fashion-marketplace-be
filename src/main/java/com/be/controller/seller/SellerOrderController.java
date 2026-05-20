@@ -2,7 +2,9 @@ package com.be.controller.seller;
 
 import com.be.common.enums.OrderStatus;
 import com.be.dto.response.ApiResponse;
-import com.be.entity.Order;
+import com.be.dto.response.seller.OrderListResponse;
+import com.be.dto.response.seller.OrderDetailResponse;
+import com.be.dto.response.seller.OrderActionResponse;
 import com.be.service.seller.SellerOrderService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
@@ -23,7 +25,7 @@ public class SellerOrderController {
     private final SellerOrderService sellerOrderService;
 
     @GetMapping
-    public ResponseEntity<ApiResponse<Page<Order>>> getListByPage(
+    public ResponseEntity<ApiResponse<Page<OrderListResponse>>> getListByPage(
             @RequestParam(required = false) Long lastId,
             @RequestParam(defaultValue = "0") int page
     ) {
@@ -34,7 +36,7 @@ public class SellerOrderController {
     }
 
     @GetMapping("/{id}")
-    public ResponseEntity<ApiResponse<Order>> getDetails(@PathVariable Long id) {
+    public ResponseEntity<ApiResponse<OrderDetailResponse>> getDetails(@PathVariable Long id) {
         return ResponseEntity.ok(ApiResponse.success(
                 sellerOrderService.getDetails(id),
                 "Get order details successfully"
@@ -42,7 +44,7 @@ public class SellerOrderController {
     }
 
     @GetMapping("/status")
-    public ResponseEntity<ApiResponse<Page<Order>>> getListByStatus(
+    public ResponseEntity<ApiResponse<Page<OrderListResponse>>> getListByStatus(
             @RequestParam OrderStatus status,
             @RequestParam(required = false) Long lastId,
             @RequestParam(defaultValue = "0") int page
@@ -54,7 +56,7 @@ public class SellerOrderController {
     }
 
     @GetMapping("/current-month")
-    public ResponseEntity<ApiResponse<Page<Order>>> getListByCurrentMonth(
+    public ResponseEntity<ApiResponse<Page<OrderListResponse>>> getListByCurrentMonth(
             @RequestParam(defaultValue = "0") int page
     ) {
         LocalDate now = LocalDate.now();
@@ -65,7 +67,7 @@ public class SellerOrderController {
     }
 
     @PutMapping("/{id}/confirm")
-    public ResponseEntity<ApiResponse<Order>> confirmOrder(@PathVariable Long id) {
+    public ResponseEntity<ApiResponse<OrderActionResponse>> confirmOrder(@PathVariable Long id) {
         return ResponseEntity.ok(ApiResponse.success(
                 sellerOrderService.confirmOrder(id),
                 "Confirm order successfully"
@@ -73,7 +75,7 @@ public class SellerOrderController {
     }
 
     @PutMapping("/{id}/delivery")
-    public ResponseEntity<ApiResponse<Order>> startDelivery(@PathVariable Long id) {
+    public ResponseEntity<ApiResponse<OrderActionResponse>> startDelivery(@PathVariable Long id) {
         return ResponseEntity.ok(ApiResponse.success(
                 sellerOrderService.startDelivery(id),
                 "Start delivery successfully"
@@ -81,7 +83,7 @@ public class SellerOrderController {
     }
 
     @PutMapping("/{id}/complete")
-    public ResponseEntity<ApiResponse<Order>> completeOrder(@PathVariable Long id) {
+    public ResponseEntity<ApiResponse<OrderActionResponse>> completeOrder(@PathVariable Long id) {
         return ResponseEntity.ok(ApiResponse.success(
                 sellerOrderService.completeOrder(id),
                 "Complete order successfully"
@@ -89,7 +91,7 @@ public class SellerOrderController {
     }
 
     @PutMapping("/{id}/cancel")
-    public ResponseEntity<ApiResponse<Order>> cancelOrder(
+    public ResponseEntity<ApiResponse<OrderActionResponse>> cancelOrder(
             @PathVariable Long id,
             @RequestParam(required = false) String reason
     ) {

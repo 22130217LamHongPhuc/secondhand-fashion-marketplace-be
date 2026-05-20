@@ -3,7 +3,9 @@ package com.be.controller.seller;
 import com.be.dto.request.seller.ProductCreateRequest;
 import com.be.dto.request.seller.ProductUpdateRequest;
 import com.be.dto.response.ApiResponse;
-import com.be.entity.Product;
+import com.be.dto.response.seller.ProductListResponse;
+import com.be.dto.response.seller.ProductDetailResponse;
+import com.be.dto.response.seller.ProductMutationResponse;
 import com.be.service.seller.SellerProductService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -28,7 +30,7 @@ public class SellerProductController {
     private final SellerProductService sellerProductService;
 
     @GetMapping
-    public ResponseEntity<ApiResponse<Page<Product>>> getListByPage(
+    public ResponseEntity<ApiResponse<Page<ProductListResponse>>> getListByPage(
             @RequestParam(required = false, defaultValue = "0") long lastId,
             @RequestParam(defaultValue = "0") int page
     ) {
@@ -39,7 +41,7 @@ public class SellerProductController {
     }
 
     @GetMapping("/{id}")
-    public ResponseEntity<ApiResponse<Product>> getDetails(@PathVariable long id) {
+    public ResponseEntity<ApiResponse<ProductDetailResponse>> getDetails(@PathVariable long id) {
         return ResponseEntity.ok(ApiResponse.success(
                 sellerProductService.getDetails(id),
                 "Get product details successfully"
@@ -47,7 +49,7 @@ public class SellerProductController {
     }
 
     @GetMapping("/status")
-    public ResponseEntity<ApiResponse<Page<Product>>> getListByStatus(
+    public ResponseEntity<ApiResponse<Page<ProductListResponse>>> getListByStatus(
             @RequestParam Boolean isActive,
             @RequestParam(required = false, defaultValue = "0") long lastId,
             @RequestParam(defaultValue = "0") int page
@@ -59,7 +61,7 @@ public class SellerProductController {
     }
 
     @PostMapping(consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
-    public ResponseEntity<ApiResponse<Product>> createProduct(
+    public ResponseEntity<ApiResponse<ProductMutationResponse>> createProduct(
             @Valid @ModelAttribute ProductCreateRequest request
     ) {
         return ResponseEntity.ok(ApiResponse.success(
@@ -69,7 +71,7 @@ public class SellerProductController {
     }
 
     @PutMapping("/{id}")
-    public ResponseEntity<ApiResponse<Product>> updateProduct(
+    public ResponseEntity<ApiResponse<ProductMutationResponse>> updateProduct(
             @PathVariable long id,
             @Valid @RequestBody ProductUpdateRequest request
     ) {

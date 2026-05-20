@@ -2,17 +2,17 @@ package com.be.service.seller;
 
 import com.be.dto.request.seller.ProductCreateRequest;
 import com.be.dto.request.seller.ProductUpdateRequest;
-import com.be.entity.Product;
+import com.be.dto.response.seller.ProductListResponse;
+import com.be.dto.response.seller.ProductDetailResponse;
+import com.be.dto.response.seller.ProductMutationResponse;
 import org.springframework.data.domain.Page;
 
-import java.util.List;
-
 public interface SellerProductService {
-    Page<Product> getListByPage(long lastId, int page);
-    Product getDetails(long id);
-    Page<Product> getListByStatus(Boolean isActive, long lastId, int page);
-    Product createProduct(ProductCreateRequest request);
-    Product updateProduct(long id, ProductUpdateRequest request);
+    Page<ProductListResponse> getListByPage(long lastId, int page);
+    ProductDetailResponse getDetails(long id);
+    Page<ProductListResponse> getListByStatus(Boolean isActive, long lastId, int page);
+    ProductMutationResponse createProduct(ProductCreateRequest request);
+    ProductMutationResponse updateProduct(long id, ProductUpdateRequest request);
     void deleteProduct(long id);
-    Page<Product> searchByKeyword(String keyword, int page);
+    Page<ProductListResponse> searchByKeyword(String keyword, int page);
 }

@@ -14,15 +14,27 @@ import java.util.Optional;
 
 @Repository
 public interface ProductRepository extends JpaRepository<Product, Long> {
-    @Query(value = "SELECT * FROM products p WHERE p.id > :lastId AND p.is_active = true ORDER BY p.id ASC", nativeQuery = true)
+    @Query("SELECT p FROM Product p WHERE p.id > :lastId AND p.isActive = true ORDER BY p.id ASC")
     Page<Product> getListByPage(@Param("lastId") long lastId, Pageable pageable);
 
-    @Query(value = "SELECT * FROM products p WHERE p.id > :lastId AND p.is_active = :isActive ORDER BY p.id ASC", nativeQuery = true)
+    @Query("SELECT p FROM Product p WHERE p.id > :lastId AND p.isActive = :isActive ORDER BY p.id ASC")
     Page<Product> getListByStatus(
             @Param("isActive") Boolean isActive,
             @Param("lastId") long lastId,
             Pageable pageable
     );
+
+    @Query("SELECT p FROM Product p LEFT JOIN FETCH p.images WHERE p.id IN :ids ORDER BY p.id ASC")
+    List<Product> findAllWithImagesByIds(@Param("ids") List<Long> ids);
+
+    @Query("""
+            SELECT p FROM Product p
+            LEFT JOIN FETCH p.images
+            LEFT JOIN FETCH p.attributes
+            LEFT JOIN FETCH p.tags
+            WHERE p.id = :id
+            """)
+    Optional<Product> findByIdWithDetails(@Param("id") long id);
 
     Page<Product> findByShopIdAndIsActiveTrue(Long shopId, Pageable pageable);
 
