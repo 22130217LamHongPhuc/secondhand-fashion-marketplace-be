@@ -5,6 +5,7 @@ import com.be.common.enums.ProductCondition;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
@@ -13,7 +14,7 @@ import java.util.List;
 import java.util.Optional;
 
 @Repository
-public interface ProductRepository extends JpaRepository<Product, Long> {
+public interface ProductRepository extends JpaRepository<Product, Long>, JpaSpecificationExecutor<Product> {
     @Query("""
             SELECT p FROM Product p
             WHERE (:keyword IS NULL OR LOWER(p.name) LIKE LOWER(CONCAT('%', :keyword, '%')))
@@ -22,6 +23,15 @@ public interface ProductRepository extends JpaRepository<Product, Long> {
             """)
     Page<Product> searchProducts(
             @Param("keyword") String keyword,
+            @Param("isActive") Boolean isActive,
+            Pageable pageable
+    );
+           
+    @Query(value = "SELECT * FROM products p WHERE p.id > :lastId AND p.is_active = true ORDER BY p.id ASC", nativeQuery = true)
+    Page<Product> getListByPage(@Param("lastId") long lastId, Pageable pageable);
+
+    @Query(value = "SELECT * FROM products p WHERE p.id > :lastId AND p.is_active = :isActive ORDER BY p.id ASC", nativeQuery = true)
+    Page<Product> getListByStatus(
             @Param("isActive") Boolean isActive,
             Pageable pageable
     );

@@ -2,6 +2,7 @@ package com.be.service.impl;
 
 import com.be.service.ImageUploadExecutorService;
 import com.be.service.S3Service;
+import com.be.service.customer.impl.CustomerProductServiceImpl;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Service;
 
@@ -13,6 +14,7 @@ public class ImageUploadExecutorServiceImpl implements ImageUploadExecutorServic
 
     private final S3Service s3Service;
     private final ExecutorService imageUploadExecutorService;
+    private CustomerProductServiceImpl customerProductService;
 
     public ImageUploadExecutorServiceImpl(
             S3Service s3Service,

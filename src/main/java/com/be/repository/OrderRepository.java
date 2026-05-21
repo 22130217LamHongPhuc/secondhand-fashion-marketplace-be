@@ -64,5 +64,7 @@ public interface OrderRepository extends JpaRepository<Order, Long> {
             @Param("excludedStatus") OrderStatus excludedStatus,
             Pageable pageable
     );
+
+
 }
 
