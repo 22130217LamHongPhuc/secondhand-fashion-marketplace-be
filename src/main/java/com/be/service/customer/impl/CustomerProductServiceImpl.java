@@ -600,7 +600,9 @@ public class CustomerProductServiceImpl implements CustomerProductService {
             throw new AccessDeniedException("Authenticated customer is required");
         }
 
-        if (user.getRole() != UserRole.CUSTOMER) {
+        boolean isCustomer = user.getUserRoles().stream()
+                .anyMatch(mapping -> mapping.getRole() != null && mapping.getRole().getName() == UserRole.CUSTOMER);
+        if (!isCustomer) {
             throw new AccessDeniedException("Only customer can review products");
         }
 

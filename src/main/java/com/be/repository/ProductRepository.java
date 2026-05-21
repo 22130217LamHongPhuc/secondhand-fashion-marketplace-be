@@ -15,15 +15,33 @@ import java.util.Optional;
 
 @Repository
 public interface ProductRepository extends JpaRepository<Product, Long>, JpaSpecificationExecutor<Product> {
+    @Query("""
+            SELECT p FROM Product p
+            WHERE (:keyword IS NULL OR LOWER(p.name) LIKE LOWER(CONCAT('%', :keyword, '%')))
+              AND (:isActive IS NULL OR p.isActive = :isActive)
+            ORDER BY p.id ASC
+            """)
+    Page<Product> searchProducts(
+            @Param("keyword") String keyword,
+            @Param("isActive") Boolean isActive,
+            Pageable pageable
+    );
+           
     @Query(value = "SELECT * FROM products p WHERE p.id > :lastId AND p.is_active = true ORDER BY p.id ASC", nativeQuery = true)
     Page<Product> getListByPage(@Param("lastId") long lastId, Pageable pageable);
 
     @Query(value = "SELECT * FROM products p WHERE p.id > :lastId AND p.is_active = :isActive ORDER BY p.id ASC", nativeQuery = true)
     Page<Product> getListByStatus(
             @Param("isActive") Boolean isActive,
-            @Param("lastId") long lastId,
             Pageable pageable
     );
+
+
+    @Query("SELECT p FROM Product p LEFT JOIN FETCH p.images WHERE p.id IN :ids ORDER BY p.id ASC")
+    List<Product> findAllWithImagesByIds(@Param("ids") List<Long> ids);
+
+    @Query(value = "SELECT p FROM Product p WHERE p.id = :id")
+    Optional<Product> findByIdWithDetails(@Param("id") long id);
 
     Page<Product> findByShopIdAndIsActiveTrue(Long shopId, Pageable pageable);
 
@@ -37,8 +55,7 @@ public interface ProductRepository extends JpaRepository<Product, Long>, JpaSpec
 
     Page<Product> findByIsActiveTrueAndStockQuantityGreaterThan(int stock, Pageable pageable);
 
-    @Query(value = "SELECT * FROM products WHERE MATCH(name, brand) AGAINST(?1 IN BOOLEAN MODE) AND is_active = true", nativeQuery = true)
-    Page<Product> searchByKeyword(String keyword, Pageable pageable);
+
 
     @Query("""
             SELECT p
