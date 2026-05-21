@@ -26,16 +26,6 @@ public interface ProductRepository extends JpaRepository<Product, Long>, JpaSpec
             @Param("isActive") Boolean isActive,
             Pageable pageable
     );
-           
-    @Query(value = "SELECT * FROM products p WHERE p.id > :lastId AND p.is_active = true ORDER BY p.id ASC", nativeQuery = true)
-    Page<Product> getListByPage(@Param("lastId") long lastId, Pageable pageable);
-
-    @Query(value = "SELECT * FROM products p WHERE p.id > :lastId AND p.is_active = :isActive ORDER BY p.id ASC", nativeQuery = true)
-    Page<Product> getListByStatus(
-            @Param("isActive") Boolean isActive,
-            Pageable pageable
-    );
-
 
     @Query("SELECT p FROM Product p LEFT JOIN FETCH p.images WHERE p.id IN :ids ORDER BY p.id ASC")
     List<Product> findAllWithImagesByIds(@Param("ids") List<Long> ids);
