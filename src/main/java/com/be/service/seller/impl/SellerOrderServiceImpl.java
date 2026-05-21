@@ -27,9 +27,8 @@ public class SellerOrderServiceImpl implements SellerOrderService {
     private final OrderStatusLogRepository orderStatusLogRepository;
 
     @Override
-    public Page<OrderListResponse> getListByPage(Long lastId, int page) {
-        long cursor = lastId == null ? 0L : lastId;
-        Page<Order> orders = orderRepository.getListByPage(cursor, PageRequest.of(page, Constant.ORDER_SIZE));
+    public Page<OrderListResponse> getListByPage(int page) {
+        Page<Order> orders = orderRepository.getListByPage(PageRequest.of(page, Constant.ORDER_SIZE));
         return orders.map(SellerOrderMapper::toListResponse);
     }
 
@@ -41,9 +40,8 @@ public class SellerOrderServiceImpl implements SellerOrderService {
     }
 
     @Override
-    public Page<OrderListResponse> getListByStatus(OrderStatus status, Long lastId, int page) {
-        long cursor = lastId == null ? 0L : lastId;
-        Page<Order> orders = orderRepository.getListByStatus(status, cursor, PageRequest.of(page, Constant.ORDER_SIZE));
+    public Page<OrderListResponse> getListByStatus(OrderStatus status, int page) {
+        Page<Order> orders = orderRepository.getListByStatus(status, PageRequest.of(page, Constant.ORDER_SIZE));
         return orders.map(SellerOrderMapper::toListResponse);
     }
 

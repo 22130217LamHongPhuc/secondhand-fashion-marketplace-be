@@ -61,6 +61,7 @@ public class SellerProductMapper {
 
         return new ProductDetailResponse(
             product.getId(),
+            product.getCategory() != null ? product.getCategory().getId() : null,
             product.getName(),
             product.getDescription(),
             product.getBrand(),

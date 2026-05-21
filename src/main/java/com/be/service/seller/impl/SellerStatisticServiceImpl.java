@@ -14,6 +14,7 @@ import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.YearMonth;
 import java.time.format.DateTimeFormatter;
@@ -31,7 +32,7 @@ public class SellerStatisticServiceImpl implements SellerStatisticService {
     private static final String[] CATEGORY_COLORS = {"#c75c2e", "#d4724a", "#f5c9a8", "#e8e5de", "#4b5563"};
 
     @Override
-    public SellerDashboardResponse getDashboardData(Long shopId, String revenuePeriod) {
+    public SellerDashboardResponse getDashboardData(Long shopId, String revenuePeriod, LocalDate startDate, LocalDate endDate) {
         Shop shop = resolveShop(shopId);
         if (shop == null) return null;
 
@@ -44,20 +45,45 @@ public class SellerStatisticServiceImpl implements SellerStatisticService {
         long pendingProducts = statisticRepository.countPendingProducts(resolvedShopId);
         long totalProducts = activeProducts + pendingProducts;
 
-        // Revenue Growth
+        // Determine startDateTime, endDateTime, prevPeriodStart, prevPeriodEnd
         LocalDateTime now = LocalDateTime.now();
-        LocalDateTime startOfCurrentMonth = YearMonth.now().atDay(1).atStartOfDay();
-        LocalDateTime startOfPreviousMonth = startOfCurrentMonth.minusMonths(1);
+        LocalDateTime startDateTime;
+        LocalDateTime endDateTime;
+        LocalDateTime prevPeriodStart;
+        LocalDateTime prevPeriodEnd;
 
-        BigDecimal currentMonthRevenue = statisticRepository.getRevenueByPeriod(resolvedShopId, startOfCurrentMonth, now);
-        BigDecimal prevMonthRevenue = statisticRepository.getRevenueByPeriod(resolvedShopId, startOfPreviousMonth, startOfCurrentMonth);
+        if (startDate != null && endDate != null) {
+            startDateTime = startDate.atStartOfDay();
+            endDateTime = endDate.plusDays(1).atStartOfDay();
+            
+            long days = ChronoUnit.DAYS.between(startDate, endDate) + 1;
+            prevPeriodStart = startDateTime.minusDays(days);
+            prevPeriodEnd = startDateTime;
+        } else {
+            // Use revenuePeriod
+            endDateTime = LocalDate.now().plusDays(1).atStartOfDay(); // exclusive end
+            
+            long days = 30; // default to 30 days
+            if ("7_DAYS".equals(revenuePeriod)) {
+                days = 7;
+            } else if ("90_DAYS".equals(revenuePeriod)) {
+                days = 90;
+            }
+            
+            startDateTime = endDateTime.minusDays(days);
+            prevPeriodStart = startDateTime.minusDays(days);
+            prevPeriodEnd = startDateTime;
+        }
+
+        BigDecimal currentPeriodRevenue = statisticRepository.getRevenueByPeriod(resolvedShopId, startDateTime, endDateTime);
+        BigDecimal prevPeriodRevenue = statisticRepository.getRevenueByPeriod(resolvedShopId, prevPeriodStart, prevPeriodEnd);
 
         Double growth = 0.0;
-        if (prevMonthRevenue.compareTo(BigDecimal.ZERO) > 0) {
-            growth = currentMonthRevenue.subtract(prevMonthRevenue)
-                    .divide(prevMonthRevenue, 4, RoundingMode.HALF_UP)
+        if (prevPeriodRevenue.compareTo(BigDecimal.ZERO) > 0) {
+            growth = currentPeriodRevenue.subtract(prevPeriodRevenue)
+                    .divide(prevPeriodRevenue, 4, RoundingMode.HALF_UP)
                     .multiply(new BigDecimal("100")).doubleValue();
-        } else if (currentMonthRevenue.compareTo(BigDecimal.ZERO) > 0) {
+        } else if (currentPeriodRevenue.compareTo(BigDecimal.ZERO) > 0) {
             growth = 100.0;
         }
 
@@ -80,15 +106,25 @@ public class SellerStatisticServiceImpl implements SellerStatisticService {
                 totalRevenue, growth, trend, pendingOrders, avatars, extraOrdersCount, totalProducts, activeProducts, pendingProducts
         );
 
-        // Revenue Chart (4 weeks)
-        SellerStatisticRepository.IWeeklyRevenueProjection currentWeeks = statisticRepository.getWeeklyRevenue(resolvedShopId, startOfCurrentMonth, startOfCurrentMonth.plusMonths(1));
-        SellerStatisticRepository.IWeeklyRevenueProjection prevWeeks = statisticRepository.getWeeklyRevenue(resolvedShopId, startOfPreviousMonth, startOfCurrentMonth);
+        // Revenue Chart (4 segments/weeks)
+        long totalSeconds = ChronoUnit.SECONDS.between(startDateTime, endDateTime);
+        long segmentSeconds = totalSeconds / 4;
+
+        BigDecimal currentSeg1 = statisticRepository.getRevenueByPeriod(resolvedShopId, startDateTime, startDateTime.plusSeconds(segmentSeconds));
+        BigDecimal currentSeg2 = statisticRepository.getRevenueByPeriod(resolvedShopId, startDateTime.plusSeconds(segmentSeconds), startDateTime.plusSeconds(2 * segmentSeconds));
+        BigDecimal currentSeg3 = statisticRepository.getRevenueByPeriod(resolvedShopId, startDateTime.plusSeconds(2 * segmentSeconds), startDateTime.plusSeconds(3 * segmentSeconds));
+        BigDecimal currentSeg4 = statisticRepository.getRevenueByPeriod(resolvedShopId, startDateTime.plusSeconds(3 * segmentSeconds), endDateTime);
+
+        BigDecimal prevSeg1 = statisticRepository.getRevenueByPeriod(resolvedShopId, prevPeriodStart, prevPeriodStart.plusSeconds(segmentSeconds));
+        BigDecimal prevSeg2 = statisticRepository.getRevenueByPeriod(resolvedShopId, prevPeriodStart.plusSeconds(segmentSeconds), prevPeriodStart.plusSeconds(2 * segmentSeconds));
+        BigDecimal prevSeg3 = statisticRepository.getRevenueByPeriod(resolvedShopId, prevPeriodStart.plusSeconds(2 * segmentSeconds), prevPeriodStart.plusSeconds(3 * segmentSeconds));
+        BigDecimal prevSeg4 = statisticRepository.getRevenueByPeriod(resolvedShopId, prevPeriodStart.plusSeconds(3 * segmentSeconds), prevPeriodEnd);
 
         List<SellerDashboardResponse.RevenueChartEntry> chart = List.of(
-                new SellerDashboardResponse.RevenueChartEntry("TUẦN 1", prevWeeks.getWeek1(), currentWeeks.getWeek1()),
-                new SellerDashboardResponse.RevenueChartEntry("TUẦN 2", prevWeeks.getWeek2(), currentWeeks.getWeek2()),
-                new SellerDashboardResponse.RevenueChartEntry("TUẦN 3", prevWeeks.getWeek3(), currentWeeks.getWeek3()),
-                new SellerDashboardResponse.RevenueChartEntry("TUẦN 4", prevWeeks.getWeek4(), currentWeeks.getWeek4())
+                new SellerDashboardResponse.RevenueChartEntry("TUẦN 1", prevSeg1, currentSeg1),
+                new SellerDashboardResponse.RevenueChartEntry("TUẦN 2", prevSeg2, currentSeg2),
+                new SellerDashboardResponse.RevenueChartEntry("TUẦN 3", prevSeg3, currentSeg3),
+                new SellerDashboardResponse.RevenueChartEntry("TUẦN 4", prevSeg4, currentSeg4)
         );
 
         // Category Breakdown

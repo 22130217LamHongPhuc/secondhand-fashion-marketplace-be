@@ -5,6 +5,7 @@ import java.util.List;
 
 public record ProductDetailResponse(
     Long id,
+    Long categoryId,
     String name,
     String description,
     String brand,

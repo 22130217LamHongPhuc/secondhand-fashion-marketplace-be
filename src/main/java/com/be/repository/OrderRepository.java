@@ -16,15 +16,14 @@ import java.util.Optional;
 
 @Repository
 public interface OrderRepository extends JpaRepository<Order, Long> {
-    @Query(value = "SELECT o FROM Order o JOIN FETCH o.customer WHERE o.id > :lastId ORDER BY o.id ASC",
-           countQuery = "SELECT COUNT(o) FROM Order o WHERE o.id > :lastId")
-    Page<Order> getListByPage(@Param("lastId") Long lastId, Pageable pageable);
+    @Query(value = "SELECT o FROM Order o JOIN FETCH o.customer ORDER BY o.id ASC",
+           countQuery = "SELECT COUNT(o) FROM Order o")
+    Page<Order> getListByPage(Pageable pageable);
 
-    @Query(value = "SELECT o FROM Order o JOIN FETCH o.customer WHERE o.id > :lastId AND o.status = :status ORDER BY o.id ASC",
-           countQuery = "SELECT COUNT(o) FROM Order o WHERE o.id > :lastId AND o.status = :status")
+    @Query(value = "SELECT o FROM Order o JOIN FETCH o.customer WHERE o.status = :status ORDER BY o.id ASC",
+           countQuery = "SELECT COUNT(o) FROM Order o WHERE o.status = :status")
     Page<Order> getListByStatus(
             @Param("status") OrderStatus status,
-            @Param("lastId") Long lastId,
             Pageable pageable
     );
 

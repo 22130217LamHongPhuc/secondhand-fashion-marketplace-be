@@ -55,14 +55,15 @@ public class SellerProductServiceImpl implements SellerProductService {
     private String cloudflareDomain;
 
     @Override
-    public Page<ProductListResponse> getListByPage(long lastId, int page) {
-        Page<Product> productPage = productRepository.getListByPage(lastId, PageRequest.of(page, Constant.PRODUCT_SIZE));
+    public Page<ProductListResponse> searchProducts(String keyword, Boolean isActive, int page) {
+        Page<Product> productPage = productRepository.searchProducts(keyword, isActive, PageRequest.of(page, Constant.PRODUCT_SIZE));
         List<Long> ids = productPage.getContent().stream().map(Product::getId).toList();
         List<Product> productsWithImages = productRepository.findAllWithImagesByIds(ids);
         java.util.Map<Long, Product> productMap = productsWithImages.stream()
                 .collect(java.util.stream.Collectors.toMap(Product::getId, p -> p));
         return productPage.map(p -> SellerProductMapper.toListResponse(productMap.getOrDefault(p.getId(), p)));
     }
+
 
     @Override
     public ProductDetailResponse getDetails(long id) {
@@ -71,15 +72,7 @@ public class SellerProductServiceImpl implements SellerProductService {
         return SellerProductMapper.toDetailResponse(product);
     }
 
-    @Override
-    public Page<ProductListResponse> getListByStatus(Boolean isActive, long lastId, int page) {
-        Page<Product> productPage = productRepository.getListByStatus(isActive, lastId, PageRequest.of(page, Constant.PRODUCT_SIZE));
-        List<Long> ids = productPage.getContent().stream().map(Product::getId).toList();
-        List<Product> productsWithImages = productRepository.findAllWithImagesByIds(ids);
-        java.util.Map<Long, Product> productMap = productsWithImages.stream()
-                .collect(java.util.stream.Collectors.toMap(Product::getId, p -> p));
-        return productPage.map(p -> SellerProductMapper.toListResponse(productMap.getOrDefault(p.getId(), p)));
-    }
+
 
     @Override
     @Transactional
@@ -183,15 +176,7 @@ public class SellerProductServiceImpl implements SellerProductService {
         throw new UnsupportedOperationException("Not implemented yet");
     }
 
-    @Override
-    public Page<ProductListResponse> searchByKeyword(String keyword, int page) {
-        Page<Product> productPage = productRepository.searchByKeyword(keyword, PageRequest.of(page, Constant.PRODUCT_SIZE));
-        List<Long> ids = productPage.getContent().stream().map(Product::getId).toList();
-        List<Product> productsWithImages = productRepository.findAllWithImagesByIds(ids);
-        java.util.Map<Long, Product> productMap = productsWithImages.stream()
-                .collect(java.util.stream.Collectors.toMap(Product::getId, p -> p));
-        return productPage.map(p -> SellerProductMapper.toListResponse(productMap.getOrDefault(p.getId(), p)));
-    }
+
 
     private Shop getCurrentSellerShop() {
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();

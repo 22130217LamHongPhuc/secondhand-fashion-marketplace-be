@@ -30,15 +30,17 @@ public class SellerProductController {
     private final SellerProductService sellerProductService;
 
     @GetMapping
-    public ResponseEntity<ApiResponse<Page<ProductListResponse>>> getListByPage(
-            @RequestParam(required = false, defaultValue = "0") long lastId,
+    public ResponseEntity<ApiResponse<Page<ProductListResponse>>> searchProducts(
+            @RequestParam(required = false) String keyword,
+            @RequestParam(required = false) Boolean isActive,
             @RequestParam(defaultValue = "0") int page
     ) {
         return ResponseEntity.ok(ApiResponse.success(
-                sellerProductService.getListByPage(lastId, page),
+                sellerProductService.searchProducts(keyword, isActive, page),
                 "Get product list successfully"
         ));
     }
+
 
     @GetMapping("/{id}")
     public ResponseEntity<ApiResponse<ProductDetailResponse>> getDetails(@PathVariable long id) {
@@ -48,17 +50,7 @@ public class SellerProductController {
         ));
     }
 
-    @GetMapping("/status")
-    public ResponseEntity<ApiResponse<Page<ProductListResponse>>> getListByStatus(
-            @RequestParam Boolean isActive,
-            @RequestParam(required = false, defaultValue = "0") long lastId,
-            @RequestParam(defaultValue = "0") int page
-    ) {
-        return ResponseEntity.ok(ApiResponse.success(
-                sellerProductService.getListByStatus(isActive, lastId, page),
-                "Get product list by status successfully"
-        ));
-    }
+
 
     @PostMapping(consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public ResponseEntity<ApiResponse<ProductMutationResponse>> createProduct(

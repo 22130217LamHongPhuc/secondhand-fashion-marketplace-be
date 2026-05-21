@@ -7,9 +7,9 @@ import com.be.dto.response.seller.OrderActionResponse;
 import org.springframework.data.domain.Page;
 
 public interface SellerOrderService {
-    Page<OrderListResponse> getListByPage(Long lastId, int page);
+    Page<OrderListResponse> getListByPage(int page);
     OrderDetailResponse getDetails(Long id);
-    Page<OrderListResponse> getListByStatus(OrderStatus status, Long lastId, int page);
+    Page<OrderListResponse> getListByStatus(OrderStatus status, int page);
     Page<OrderListResponse> getListByMonth(int year, int month, int page);
     OrderActionResponse confirmOrder(Long orderId);
     OrderActionResponse startDelivery(Long orderId);
