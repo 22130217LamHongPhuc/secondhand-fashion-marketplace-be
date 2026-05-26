@@ -63,4 +63,35 @@ public class ProductServiceImpl implements ProductService {
     public List<Product> getAllProducts() {
         return productRepository.findAll();
     }
+
+    @Override
+    @Transactional
+    public Product updateProduct(Long id, ProductRequest request) {
+        Product product = getProductById(id);
+        
+        product.setName(request.getName());
+        product.setDescription(request.getDescription());
+        product.setBrand(request.getBrand());
+        product.setOriginCountry(request.getOriginCountry());
+        product.setCondition(request.getCondition());
+        product.setBasePrice(request.getBasePrice());
+        product.setSalePrice(request.getSalePrice());
+        product.setStockQuantity(request.getStockQuantity());
+        
+        if (request.getCategoryId() != null) {
+            product.setCategory(categoryRepository.findById(request.getCategoryId()).orElse(null));
+        }
+
+        if (request.getImageUrls() != null) {
+            product.getImages().clear();
+            product.getImages().addAll(request.getImageUrls().stream()
+                    .map(url -> ProductImage.builder()
+                            .url(url)
+                            .product(product)
+                            .build())
+                    .collect(Collectors.toList()));
+        }
+
+        return productRepository.save(product);
+    }
 }

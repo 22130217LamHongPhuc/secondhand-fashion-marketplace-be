@@ -103,6 +103,13 @@ public class AdminController {
         return ResponseEntity.ok(Map.of("message", "Product deleted successfully"));
     }
 
+    @PutMapping("/products/{productId}")
+    public ResponseEntity<ProductResponse> updateProduct(
+            @PathVariable Long productId,
+            @RequestBody com.be.dto.request.ProductRequest request) {
+        return ResponseEntity.ok(ProductResponse.fromEntity(productService.updateProduct(productId, request)));
+    }
+
     // ============ ORDER MANAGEMENT ============
     
     @GetMapping("/orders")
