@@ -33,6 +33,14 @@ public class UserResponse {
     private Long totalSpent;
 
     public static UserResponse fromEntity(User user) {
+        long calculatedTotalSpent = 0L;
+        if (user.getOrders() != null) {
+            calculatedTotalSpent = user.getOrders().stream()
+                    .filter(order -> order.getStatus() != com.be.common.enums.OrderStatus.CANCELLED)
+                    .mapToLong(order -> order.getSubtotal().add(order.getShippingFee()).longValue())
+                    .sum();
+        }
+
         return UserResponse.builder()
                 .id(user.getId())
                 .email(user.getEmail())
@@ -49,7 +57,7 @@ public class UserResponse {
                 .updatedAt(user.getUpdatedAt())
                 .emailVerifiedAt(user.getEmailVerifiedAt())
                 .totalOrders(user.getOrders() != null ? user.getOrders().size() : 0)
-                .totalSpent(0L)
+                .totalSpent(calculatedTotalSpent)
                 .build();
     }
 }

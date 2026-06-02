@@ -24,6 +24,7 @@ public class OrderResponse {
     private String customerName;
     private String customerEmail;
     private String customerPhone;
+    private String shopName;
     private String shippingAddress;
     private String shippingCity;
     private BigDecimal subtotal;
@@ -72,6 +73,7 @@ public class OrderResponse {
                 .customerName(order.getCustomer() != null ? order.getCustomer().getFullName() : "Unknown")
                 .customerEmail(order.getCustomer() != null ? order.getCustomer().getEmail() : "")
                 .customerPhone(order.getCustomer() != null ? order.getCustomer().getPhone() : "")
+                .shopName(order.getShop() != null ? order.getShop().getName() : "Unknown Shop")
                 .shippingAddress(shippingAddr)
                 .shippingCity(shippingCity)
                 .subtotal(order.getSubtotal())
