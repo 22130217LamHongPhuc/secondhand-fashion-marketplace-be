@@ -16,6 +16,7 @@ public interface AdminService {
     Page<User> getAllUsers(Pageable pageable);
     User getUserById(Long userId);
     User updateUserStatus(Long userId, boolean isActive);
+    User updateUserRole(Long userId, String role);
     void deleteUser(Long userId);
     void deleteProduct(Long productId);
 
@@ -33,5 +34,5 @@ public interface AdminService {
 
     // ============ COMPLAINT MANAGEMENT ============
     List<Complaint> getAllComplaints();
-    Complaint updateComplaintStatus(Long complaintId, ComplaintStatus status);
+    Complaint updateComplaintStatus(Long complaintId, ComplaintStatus status, String resolution);
 }

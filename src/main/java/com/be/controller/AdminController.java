@@ -1,7 +1,9 @@
 package com.be.controller;
 
 import com.be.common.enums.OrderStatus;
+import com.be.dto.request.CategoryRequest;
 import com.be.dto.response.*;
+import com.be.entity.Category;
 import com.be.service.AdminService;
 import com.be.service.OrderService;
 import lombok.RequiredArgsConstructor;
@@ -51,6 +53,13 @@ public class AdminController {
             @PathVariable Long userId,
             @RequestParam boolean isActive) {
         return ResponseEntity.ok(UserResponse.fromEntity(adminService.updateUserStatus(userId, isActive)));
+    }
+
+    @PatchMapping("/users/{userId}/role")
+    public ResponseEntity<UserResponse> updateUserRole(
+            @PathVariable Long userId,
+            @RequestParam String role) {
+        return ResponseEntity.ok(UserResponse.fromEntity(adminService.updateUserRole(userId, role)));
     }
 
     @PostMapping("/users/{userId}/ban")
@@ -108,6 +117,13 @@ public class AdminController {
             @PathVariable Long productId,
             @RequestBody com.be.dto.request.ProductRequest request) {
         return ResponseEntity.ok(ProductResponse.fromEntity(productService.updateProduct(productId, request)));
+    }
+
+    @PutMapping("/products/{productId}/active")
+    public ResponseEntity<ProductResponse> toggleProductActive(
+            @PathVariable Long productId,
+            @RequestParam boolean active) {
+        return ResponseEntity.ok(ProductResponse.fromEntity(productService.toggleProductActive(productId, active)));
     }
 
     // ============ ORDER MANAGEMENT ============
@@ -177,26 +193,35 @@ public class AdminController {
 
     @GetMapping("/dashboard/activities")
     public ResponseEntity<List<Map<String, Object>>> getActivities() {
-        return ResponseEntity.ok(java.util.Collections.emptyList());
+        Pageable pageable = PageRequest.of(0, 10, org.springframework.data.domain.Sort.by(org.springframework.data.domain.Sort.Direction.DESC, "createdAt"));
+        List<Map<String, Object>> activities = orderService.getAllOrders(pageable).stream()
+                .map(order -> Map.<String, Object>of(
+                        "timestamp", order.getCreatedAt(),
+                        "description", "Đơn hàng #" + order.getOrderCode() + " chuyển sang trạng thái " + order.getStatus().name(),
+                        "type", "ORDER_STATUS"
+                ))
+                .collect(Collectors.toList());
+        return ResponseEntity.ok(activities);
     }
 
     // ============ CATEGORY MANAGEMENT API ============
     @GetMapping("/categories")
-    public ResponseEntity<List<com.be.entity.Category>> getCategories() {
-        return ResponseEntity.ok(adminService.getAllCategories());
+    public ResponseEntity<List<CategoryResponse>> getCategories() {
+        return ResponseEntity.ok(adminService.getAllCategories().stream()
+                .map(CategoryResponse::fromEntity)
+                .collect(Collectors.toList()));
     }
 
     @PostMapping("/categories")
-    public ResponseEntity<com.be.entity.Category> createCategory(@RequestBody com.be.entity.Category category) {
-        return ResponseEntity.ok(adminService.saveCategory(category));
+    public ResponseEntity<CategoryResponse> createCategory(@RequestBody CategoryRequest request) {
+        return ResponseEntity.ok(CategoryResponse.fromEntity(adminService.saveCategory(toEntity(request, null))));
     }
 
     @PutMapping("/categories/{id}")
-    public ResponseEntity<com.be.entity.Category> updateCategory(
+    public ResponseEntity<CategoryResponse> updateCategory(
             @PathVariable Long id,
-            @RequestBody com.be.entity.Category category) {
-        category.setId(id);
-        return ResponseEntity.ok(adminService.saveCategory(category));
+            @RequestBody CategoryRequest request) {
+        return ResponseEntity.ok(CategoryResponse.fromEntity(adminService.saveCategory(toEntity(request, id))));
     }
 
     @DeleteMapping("/categories/{id}")
@@ -246,7 +271,25 @@ public class AdminController {
             @PathVariable Long id,
             @RequestBody Map<String, String> body) {
         String statusStr = body.get("status");
+        String resolution = body.get("resolution");
         com.be.common.enums.ComplaintStatus status = com.be.common.enums.ComplaintStatus.valueOf(statusStr.toUpperCase());
-        return ResponseEntity.ok(adminService.updateComplaintStatus(id, status));
+        return ResponseEntity.ok(adminService.updateComplaintStatus(id, status, resolution));
+    }
+
+    private Category toEntity(CategoryRequest request, Long id) {
+        Category category = Category.builder()
+                .id(id)
+                .name(request.getName())
+                .slug(request.getSlug())
+                .iconUrl(request.getIconUrl())
+                .sortOrder(request.getSortOrder() != null ? request.getSortOrder() : 0)
+                .isActive(request.getIsActive() != null ? request.getIsActive() : true)
+                .build();
+
+        if (request.getParentId() != null) {
+            category.setParent(Category.builder().id(request.getParentId()).build());
+        }
+
+        return category;
     }
 }

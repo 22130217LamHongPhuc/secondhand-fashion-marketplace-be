@@ -82,6 +82,15 @@ public class AdminServiceImpl implements AdminService {
 
     @Override
     @Transactional
+    public User updateUserRole(Long userId, String role) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new RuntimeException("User not found"));
+        user.setRole(UserRole.valueOf(role.toUpperCase().replace("BUYER", "CUSTOMER")));
+        return userRepository.save(user);
+    }
+
+    @Override
+    @Transactional
     public void deleteUser(Long userId) {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new RuntimeException("User not found with id: " + userId));
@@ -111,6 +120,9 @@ public class AdminServiceImpl implements AdminService {
     @Override
     @Transactional
     public void deleteCategory(Long categoryId) {
+        if (categoryRepository.existsByParentId(categoryId)) {
+            throw new RuntimeException("Category has child categories and cannot be deleted");
+        }
         categoryRepository.deleteById(categoryId);
     }
 
@@ -168,10 +180,13 @@ public class AdminServiceImpl implements AdminService {
 
     @Override
     @Transactional
-    public Complaint updateComplaintStatus(Long complaintId, ComplaintStatus status) {
+    public Complaint updateComplaintStatus(Long complaintId, ComplaintStatus status, String resolution) {
         Complaint complaint = complaintRepository.findById(complaintId)
                 .orElseThrow(() -> new RuntimeException("Complaint not found with id: " + complaintId));
         complaint.setStatus(status);
+        if (resolution != null) {
+            complaint.setResolution(resolution);
+        }
         return complaintRepository.save(complaint);
     }
 }

@@ -94,4 +94,12 @@ public class ProductServiceImpl implements ProductService {
 
         return productRepository.save(product);
     }
+
+    @Override
+    @Transactional
+    public Product toggleProductActive(Long id, boolean active) {
+        Product product = getProductById(id);
+        product.setIsActive(active);
+        return productRepository.save(product);
+    }
 }

@@ -57,6 +57,9 @@ public class Complaint {
     @Builder.Default
     private ComplaintSeverity severity = ComplaintSeverity.MEDIUM;
 
+    @Column(name = "resolution", columnDefinition = "TEXT", nullable = true)
+    private String resolution;
+
     @CreationTimestamp
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;

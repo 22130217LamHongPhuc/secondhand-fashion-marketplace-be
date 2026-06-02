@@ -23,6 +23,11 @@ import com.be.repository.ProductRepository;
 import com.be.repository.ShopRepository;
 import com.be.repository.UserAddressRepository;
 import com.be.repository.UserRepository;
+import com.be.repository.ComplaintRepository;
+import com.be.entity.Complaint;
+import com.be.common.enums.ComplaintStatus;
+import com.be.common.enums.ComplaintType;
+import com.be.common.enums.ComplaintSeverity;
 import lombok.RequiredArgsConstructor;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.context.annotation.Profile;
@@ -49,6 +54,7 @@ public class SellerSeeder implements CommandLineRunner {
     private final CategoryRepository categoryRepository;
     private final ProductRepository productRepository;
     private final OrderRepository orderRepository;
+    private final ComplaintRepository complaintRepository;
 
     @Override
     @Transactional
@@ -199,6 +205,119 @@ public class SellerSeeder implements CommandLineRunner {
                 products.get(0),
                 1
         );
+
+        seedComplaints(customer, shop);
+    }
+
+    private void seedComplaints(User customer, Shop shop) {
+        if (complaintRepository.count() > 0) {
+            return;
+        }
+
+        Order orderDone = orderRepository.findByOrderCode("SELLER-DEMO-DONE").orElse(null);
+        Order orderShipping = orderRepository.findByOrderCode("SELLER-DEMO-SHIPPING").orElse(null);
+        Order orderConfirmed = orderRepository.findByOrderCode("SELLER-DEMO-CONFIRMED").orElse(null);
+
+        List<Complaint> complaints = List.of(
+            Complaint.builder()
+                .reporter(customer)
+                .reportedShop(shop)
+                .order(orderDone)
+                .type(ComplaintType.SHOP_COMPLAINT)
+                .title("Sản phẩm rách nát, khác với hình ảnh mô tả")
+                .content("Tôi mua áo blazer linen với giá 410.000đ nhưng nhận về áo bị rách tay rất to và bẩn. Shop từ chối giải quyết hoàn trả hàng. Đề nghị ban quản trị can thiệp!")
+                .status(ComplaintStatus.PENDING)
+                .severity(ComplaintSeverity.HIGH)
+                .build(),
+
+            Complaint.builder()
+                .reporter(customer)
+                .reportedShop(shop)
+                .order(orderShipping)
+                .type(ComplaintType.SHOP_COMPLAINT)
+                .title("Shop không chịu gửi hàng dù đơn hàng đã thanh toán")
+                .content("Tôi đã thanh toán qua thẻ ngân hàng từ 3 ngày trước, đơn hàng báo đang giao nhưng tôi liên hệ shop hỏi mã vận đơn thì không trả lời tin nhắn.")
+                .status(ComplaintStatus.PENDING)
+                .severity(ComplaintSeverity.MEDIUM)
+                .build(),
+
+            Complaint.builder()
+                .reporter(customer)
+                .reportedShop(shop)
+                .order(orderConfirmed)
+                .type(ComplaintType.SHOP_COMPLAINT)
+                .title("Shop giao hàng nhái, nghi ngờ hàng giả thương hiệu")
+                .content("Tôi đặt mua sản phẩm được ghi là chính hãng vintage Chanel nhưng khi nhận hàng da rất khét mùi nhựa, logo bị lệch và bong tróc. Shop từ chối hoàn trả tiền.")
+                .status(ComplaintStatus.PENDING)
+                .severity(ComplaintSeverity.HIGH)
+                .build(),
+
+            Complaint.builder()
+                .reporter(customer)
+                .reportedShop(shop)
+                .order(orderDone)
+                .type(ComplaintType.SHOP_COMPLAINT)
+                .title("Yêu cầu hoàn trả hàng do giao chậm trễ")
+                .content("Tôi đặt mua sản phẩm để đi tiệc nhưng shop chuẩn bị hàng quá lâu dẫn đến đơn vị vận chuyển giao trễ 2 ngày. Tôi không còn nhu cầu sử dụng nữa nên muốn hoàn tiền.")
+                .status(ComplaintStatus.REJECTED)
+                .severity(ComplaintSeverity.MEDIUM)
+                .resolution("Từ chối khiếu nại. Qua xác minh hệ thống, đơn hàng vẫn được giao thành công trong vòng 3 ngày làm việc (đúng cam kết thời gian vận chuyển). Việc trễ hẹn cá nhân không thuộc chính sách hoàn trả hàng.")
+                .build(),
+
+            Complaint.builder()
+                .reporter(customer)
+                .reportedShop(shop)
+                .type(ComplaintType.USER_FEEDBACK)
+                .title("Ứng dụng thỉnh thoảng giật lag khi kéo xem danh sách")
+                .content("Tôi dùng điện thoại Android kéo lướt xem đồ secondhand thỉnh thoảng giao diện bị đứng hình khoảng 2 giây rồi mới load tiếp. Hy vọng đội kỹ thuật tối ưu hóa.")
+                .status(ComplaintStatus.PENDING)
+                .severity(ComplaintSeverity.LOW)
+                .build(),
+
+            Complaint.builder()
+                .reporter(customer)
+                .reportedShop(shop)
+                .type(ComplaintType.USER_FEEDBACK)
+                .title("Lỗi không tải được ảnh sản phẩm khi đăng bán đồ thanh lý")
+                .content("Tôi bấm đăng bán quần áo cũ nhưng khi tải ảnh lên toàn bị báo lỗi 'Lỗi upload ảnh (500)'. Tôi đã thử nén ảnh nhỏ lại vẫn không được, làm tôi không thể thanh lý đồ được.")
+                .status(ComplaintStatus.PENDING)
+                .severity(ComplaintSeverity.MEDIUM)
+                .build(),
+
+            Complaint.builder()
+                .reporter(customer)
+                .reportedShop(shop)
+                .type(ComplaintType.USER_FEEDBACK)
+                .title("Kiến nghị thêm bộ lọc theo Độ mới (Condition) sản phẩm")
+                .content("Mua bán đồ cũ thì tình trạng đồ (like new, good, fair) rất quan trọng. Mong nhà phát triển thêm bộ lọc nhanh theo độ mới để dễ lựa chọn đồ phù hợp.")
+                .status(ComplaintStatus.PENDING)
+                .severity(ComplaintSeverity.LOW)
+                .build(),
+
+            Complaint.builder()
+                .reporter(customer)
+                .reportedShop(shop)
+                .type(ComplaintType.USER_FEEDBACK)
+                .title("Báo cáo tài khoản giả mạo lừa đảo chuyển khoản ngoài hệ thống")
+                .content("Tài khoản tên 'ShopGiaSi102' nhắn tin dụ dỗ tôi giao dịch qua Zalo nhận giảm giá 20% rồi quỵt cọc của tôi. Đề nghị admin rà soát và khóa vĩnh viễn shop lừa đảo này.")
+                .status(ComplaintStatus.RESOLVED)
+                .severity(ComplaintSeverity.HIGH)
+                .resolution("Cảm ơn bạn đã báo cáo. Ban quản trị đã rà soát lịch sử tin nhắn của shop này, xác nhận hành vi dụ dỗ giao dịch ngoài luồng và đã thực hiện khóa tài khoản vĩnh viễn cùng địa chỉ IP liên quan.")
+                .build(),
+
+            Complaint.builder()
+                .reporter(customer)
+                .reportedShop(shop)
+                .type(ComplaintType.USER_FEEDBACK)
+                .title("Góp ý bổ sung thêm cổng thanh toán ví điện tử Momo")
+                .content("Hiện tại hệ thống chỉ hỗ trợ thanh toán qua chuyển khoản và ví Tiệm Cũ, tôi mong muốn có thêm Momo để thanh toán tiện lợi hơn.")
+                .status(ComplaintStatus.RESOLVED)
+                .severity(ComplaintSeverity.LOW)
+                .resolution("Chào bạn, chân thành cảm ơn đóng góp rất hữu ích của bạn! Tiệm Cũ đã ghi nhận và đang lên kế hoạch tích hợp cổng Momo trong quý tiếp theo.")
+                .build()
+        );
+
+        complaintRepository.saveAll(complaints);
     }
 
     private User seedSeller() {
