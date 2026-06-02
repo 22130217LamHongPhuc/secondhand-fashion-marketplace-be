@@ -58,6 +58,10 @@ public class Shop {
     @Builder.Default
     private Boolean isVerified = false;
 
+    @Column(name = "warning_strikes", nullable = false)
+    @Builder.Default
+    private Integer warningStrikes = 0;
+
     @CreationTimestamp
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;
@@ -68,12 +72,15 @@ public class Shop {
 
     // Relationships
     @OneToMany(mappedBy = "shop", cascade = CascadeType.ALL, orphanRemoval = true)
+    @com.fasterxml.jackson.annotation.JsonIgnore
     private List<Product> products;
 
     @OneToMany(mappedBy = "shop", cascade = CascadeType.ALL, orphanRemoval = true)
+    @com.fasterxml.jackson.annotation.JsonIgnore
     private List<Order> orders;
 
     @OneToMany(mappedBy = "shop", cascade = CascadeType.ALL, orphanRemoval = true)
+    @com.fasterxml.jackson.annotation.JsonIgnore
     private List<RevenueSnapshot> revenueSnapshots;
 }
 

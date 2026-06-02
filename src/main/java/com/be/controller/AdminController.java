@@ -179,4 +179,74 @@ public class AdminController {
     public ResponseEntity<List<Map<String, Object>>> getActivities() {
         return ResponseEntity.ok(java.util.Collections.emptyList());
     }
+
+    // ============ CATEGORY MANAGEMENT API ============
+    @GetMapping("/categories")
+    public ResponseEntity<List<com.be.entity.Category>> getCategories() {
+        return ResponseEntity.ok(adminService.getAllCategories());
+    }
+
+    @PostMapping("/categories")
+    public ResponseEntity<com.be.entity.Category> createCategory(@RequestBody com.be.entity.Category category) {
+        return ResponseEntity.ok(adminService.saveCategory(category));
+    }
+
+    @PutMapping("/categories/{id}")
+    public ResponseEntity<com.be.entity.Category> updateCategory(
+            @PathVariable Long id,
+            @RequestBody com.be.entity.Category category) {
+        category.setId(id);
+        return ResponseEntity.ok(adminService.saveCategory(category));
+    }
+
+    @DeleteMapping("/categories/{id}")
+    public ResponseEntity<Map<String, String>> deleteCategory(@PathVariable Long id) {
+        adminService.deleteCategory(id);
+        return ResponseEntity.ok(Map.of("message", "Category deleted successfully"));
+    }
+
+    // ============ SHOP MANAGEMENT API ============
+    @GetMapping("/shops")
+    public ResponseEntity<List<com.be.entity.Shop>> getShops() {
+        return ResponseEntity.ok(adminService.getAllShops());
+    }
+
+    @PutMapping("/shops/{id}/verify")
+    public ResponseEntity<com.be.entity.Shop> verifyShop(
+            @PathVariable Long id,
+            @RequestParam boolean verify) {
+        return ResponseEntity.ok(adminService.verifyShop(id, verify));
+    }
+
+    @PutMapping("/shops/{id}/strike")
+    public ResponseEntity<com.be.entity.Shop> addStrikeShop(@PathVariable Long id) {
+        return ResponseEntity.ok(adminService.addWarningStrike(id));
+    }
+
+    @PutMapping("/shops/{id}/active")
+    public ResponseEntity<com.be.entity.Shop> toggleShopActive(
+            @PathVariable Long id,
+            @RequestParam boolean active) {
+        return ResponseEntity.ok(adminService.toggleShopActive(id, active));
+    }
+
+    @PutMapping("/shops/{id}/reset-strikes")
+    public ResponseEntity<com.be.entity.Shop> resetStrikes(@PathVariable Long id) {
+        return ResponseEntity.ok(adminService.resetStrikes(id));
+    }
+
+    // ============ COMPLAINT MANAGEMENT API ============
+    @GetMapping("/complaints")
+    public ResponseEntity<List<com.be.entity.Complaint>> getComplaints() {
+        return ResponseEntity.ok(adminService.getAllComplaints());
+    }
+
+    @PutMapping("/complaints/{id}/status")
+    public ResponseEntity<com.be.entity.Complaint> updateComplaintStatus(
+            @PathVariable Long id,
+            @RequestBody Map<String, String> body) {
+        String statusStr = body.get("status");
+        com.be.common.enums.ComplaintStatus status = com.be.common.enums.ComplaintStatus.valueOf(statusStr.toUpperCase());
+        return ResponseEntity.ok(adminService.updateComplaintStatus(id, status));
+    }
 }

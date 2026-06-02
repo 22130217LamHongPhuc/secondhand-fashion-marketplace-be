@@ -15,6 +15,14 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
+import com.be.entity.Category;
+import com.be.entity.Shop;
+import com.be.entity.Complaint;
+import com.be.common.enums.ComplaintStatus;
+import com.be.repository.CategoryRepository;
+import com.be.repository.ShopRepository;
+import com.be.repository.ComplaintRepository;
+import java.util.List;
 
 @Service
 @RequiredArgsConstructor
@@ -23,6 +31,9 @@ public class AdminServiceImpl implements AdminService {
     private final UserRepository userRepository;
     private final ProductRepository productRepository;
     private final OrderRepository orderRepository;
+    private final CategoryRepository categoryRepository;
+    private final ShopRepository shopRepository;
+    private final ComplaintRepository complaintRepository;
 
     @Override
     public AdminDashboardResponse getDashboardStats() {
@@ -83,5 +94,84 @@ public class AdminServiceImpl implements AdminService {
         productRepository.findById(productId)
                 .orElseThrow(() -> new RuntimeException("Product not found with id: " + productId));
         productRepository.deleteById(productId);
+    }
+
+    // ============ CATEGORY MANAGEMENT ============
+    @Override
+    public List<Category> getAllCategories() {
+        return categoryRepository.findAll();
+    }
+
+    @Override
+    @Transactional
+    public Category saveCategory(Category category) {
+        return categoryRepository.save(category);
+    }
+
+    @Override
+    @Transactional
+    public void deleteCategory(Long categoryId) {
+        categoryRepository.deleteById(categoryId);
+    }
+
+    // ============ SHOP MANAGEMENT ============
+    @Override
+    public List<Shop> getAllShops() {
+        return shopRepository.findAll();
+    }
+
+    @Override
+    @Transactional
+    public Shop verifyShop(Long shopId, boolean verify) {
+        Shop shop = shopRepository.findById(shopId)
+                .orElseThrow(() -> new RuntimeException("Shop not found with id: " + shopId));
+        shop.setIsVerified(verify);
+        return shopRepository.save(shop);
+    }
+
+    @Override
+    @Transactional
+    public Shop addWarningStrike(Long shopId) {
+        Shop shop = shopRepository.findById(shopId)
+                .orElseThrow(() -> new RuntimeException("Shop not found with id: " + shopId));
+        int strikes = shop.getWarningStrikes() + 1;
+        shop.setWarningStrikes(strikes);
+        if (strikes >= 5) {
+            shop.setIsActive(false);
+        }
+        return shopRepository.save(shop);
+    }
+
+    @Override
+    @Transactional
+    public Shop resetStrikes(Long shopId) {
+        Shop shop = shopRepository.findById(shopId)
+                .orElseThrow(() -> new RuntimeException("Shop not found with id: " + shopId));
+        shop.setWarningStrikes(0);
+        return shopRepository.save(shop);
+    }
+
+    @Override
+    @Transactional
+    public Shop toggleShopActive(Long shopId, boolean active) {
+        Shop shop = shopRepository.findById(shopId)
+                .orElseThrow(() -> new RuntimeException("Shop not found with id: " + shopId));
+        shop.setIsActive(active);
+        return shopRepository.save(shop);
+    }
+
+    // ============ COMPLAINT MANAGEMENT ============
+    @Override
+    public List<Complaint> getAllComplaints() {
+        return complaintRepository.findAll();
+    }
+
+    @Override
+    @Transactional
+    public Complaint updateComplaintStatus(Long complaintId, ComplaintStatus status) {
+        Complaint complaint = complaintRepository.findById(complaintId)
+                .orElseThrow(() -> new RuntimeException("Complaint not found with id: " + complaintId));
+        complaint.setStatus(status);
+        return complaintRepository.save(complaint);
     }
 }
