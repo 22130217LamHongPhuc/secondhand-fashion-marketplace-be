@@ -27,6 +27,9 @@ public class ProductImage {
     @Column(columnDefinition = "TEXT", nullable = false)
     private String url;
 
+    @Column(name = "image_key", columnDefinition = "TEXT", nullable = false)
+    private String imageKey;
+
     @Column(name = "sort_order", nullable = false)
     @Builder.Default
     private Integer sortOrder = 0;

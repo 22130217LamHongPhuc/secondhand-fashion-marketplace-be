@@ -106,6 +106,13 @@ public class User implements UserDetails{
                 .toList();
     }
 
+    public UserRole getRole() {
+        if (userRoles == null || userRoles.isEmpty() || userRoles.get(0) == null || userRoles.get(0).getRole() == null) {
+            return null;
+        }
+        return userRoles.get(0).getRole().getName();
+    }
+
     @Override
     public @Nullable String getPassword() {
         return passwordHash;

@@ -45,6 +45,7 @@ public class ProductServiceImpl implements ProductService {
             product.setImages(request.getImageUrls().stream()
                     .map(url -> ProductImage.builder()
                             .url(url)
+                            .imageKey(extractImageKey(url))
                             .product(product)
                             .build())
                     .collect(Collectors.toList()));
@@ -54,14 +55,16 @@ public class ProductServiceImpl implements ProductService {
     }
 
     @Override
+    @Transactional(readOnly = true)
     public Product getProductById(Long id) {
-        return productRepository.findById(id)
+        return productRepository.findByIdWithDetails(id)
                 .orElseThrow(() -> new RuntimeException("Product not found"));
     }
 
     @Override
+    @Transactional(readOnly = true)
     public List<Product> getAllProducts() {
-        return productRepository.findAll();
+        return productRepository.findAllWithDetails();
     }
 
     @Override
@@ -87,6 +90,7 @@ public class ProductServiceImpl implements ProductService {
             product.getImages().addAll(request.getImageUrls().stream()
                     .map(url -> ProductImage.builder()
                             .url(url)
+                            .imageKey(extractImageKey(url))
                             .product(product)
                             .build())
                     .collect(Collectors.toList()));
@@ -101,5 +105,14 @@ public class ProductServiceImpl implements ProductService {
         Product product = getProductById(id);
         product.setIsActive(active);
         return productRepository.save(product);
+    }
+
+    private String extractImageKey(String url) {
+        if (url == null) return "";
+        int pathStart = url.indexOf("/", 8);
+        if (pathStart != -1 && pathStart < url.length() - 1) {
+            return url.substring(pathStart + 1);
+        }
+        return url;
     }
 }

@@ -228,6 +228,7 @@ public class SellerProductServiceImpl implements SellerProductService {
                 .thenApply(key -> ProductImage.builder()
                         .product(product)
                         .url(buildCloudflareImageUrl(key))
+                        .imageKey(key)
                         .sortOrder(image.sortOrder() == null ? 0 : image.sortOrder())
                         .isPrimary(Boolean.TRUE.equals(image.isPrimary()))
                         .build());
