@@ -25,7 +25,7 @@ public class ProductImage {
     private Product product;
 
     @Column(columnDefinition = "TEXT", nullable = false)
-    private String key;
+    private String imageKey;
 
     @Column(columnDefinition = "TEXT", nullable = false)
     private String url;

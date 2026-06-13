@@ -15,7 +15,7 @@ public class UrlGenerator {
     private UrlGenerator() {
     }
 
-    @Value("${cloudflare.r2.endpoint}")
+    @Value("${cloudflare.r2.domain}")
     public void setBaseUrl(String endpoint) {
         UrlGenerator.baseUrl = endpoint;
     }

@@ -25,7 +25,10 @@ public class ImageStorageServiceImpl implements ImageStoreService {
 
     @Override
     public String uploadImage(MultipartFile file) {
-        String contentType = determineContentType(file.getContentType());
+        String contentType = file.getContentType();
+        if (contentType == null) {
+            contentType = "application/octet-stream"; // Fallback an toàn
+        }
         String key = KeyGeneratorUtil.generateTempKey(file.getOriginalFilename());
         PutObjectRequest request = PutObjectRequest.builder()
                 .bucket(bucketName)
@@ -33,7 +36,8 @@ public class ImageStorageServiceImpl implements ImageStoreService {
                 .contentType(contentType)
                 .build();
         try{
-            s3Client.putObject(request, RequestBody.fromBytes(file.getBytes()));
+            s3Client.putObject(request,
+                    RequestBody.fromInputStream(file.getInputStream(), file.getSize()));
         }catch (Exception e){
             throw new RuntimeException(e);
         }
@@ -85,18 +89,5 @@ public class ImageStorageServiceImpl implements ImageStoreService {
             log.error("Không thể xóa file với key [{}]: {}", key, e.getMessage());
             throw new RuntimeException(e);
         }
-    }
-    private String determineContentType(String fileName) {
-        if (fileName == null) return "application/octet-stream";
-
-        String lowerCaseName = fileName.toLowerCase();
-        if (lowerCaseName.endsWith(".pdf")) return "application/pdf";
-        if (lowerCaseName.endsWith(".doc")) return "application/msword";
-        if (lowerCaseName.endsWith(".docx"))
-            return "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
-        if (lowerCaseName.endsWith(".png")) return "image/png";
-        if (lowerCaseName.endsWith(".jpg") || lowerCaseName.endsWith(".jpeg")) return "image/jpeg";
-
-        return "application/octet-stream";
     }
 }

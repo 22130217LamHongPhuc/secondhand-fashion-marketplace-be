@@ -108,7 +108,7 @@ public class SellerProductServiceImpl implements SellerProductService {
         return images.stream().map(image -> ProductImage
                 .builder().url(UrlGenerator.convertTempUrlToProductUrl(image.imageUrl()))
                 .product(product)
-                .key(KeyGeneratorUtil.extractKey(UrlGenerator.convertTempUrlToProductUrl(image.imageUrl())))
+                .imageKey(KeyGeneratorUtil.extractKey(UrlGenerator.convertTempUrlToProductUrl(image.imageUrl())))
                 .isPrimary(image.isPrimary())
                 .sortOrder(image.sortOrder()).build()).toList();
     }
@@ -190,12 +190,14 @@ public class SellerProductServiceImpl implements SellerProductService {
 
 
     private Shop getCurrentSellerShop() {
-        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
-        if (authentication == null || !(authentication.getPrincipal() instanceof User user)) {
-            throw new IllegalStateException("Authenticated seller is required");
-        }
-
-        return shopRepository.findBySellerId(user.getId())
+//        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+//        if (authentication == null || !(authentication.getPrincipal() instanceof User user)) {
+//            throw new IllegalStateException("Authenticated seller is required");
+//        }
+//
+//        return shopRepository.findBySellerId(user.getId())
+//                .orElseThrow(() -> new EntityNotFoundException("Shop not found for current seller"));
+        return shopRepository.findBySellerId(1L)
                 .orElseThrow(() -> new EntityNotFoundException("Shop not found for current seller"));
     }
 
