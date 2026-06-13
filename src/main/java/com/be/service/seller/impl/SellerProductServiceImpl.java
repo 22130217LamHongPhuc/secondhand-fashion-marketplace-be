@@ -6,6 +6,10 @@ import com.be.constant.Constant;
 import com.be.dto.request.seller.ProductAttributeRequest;
 import com.be.dto.request.seller.ProductImageRequest;
 import com.be.dto.request.seller.ProductUpdateRequest;
+import com.be.dto.response.seller.ProductListResponse;
+import com.be.dto.response.seller.ProductDetailResponse;
+import com.be.dto.response.seller.ProductMutationResponse;
+import com.be.dto.response.seller.mapper.SellerProductMapper;
 import com.be.entity.Category;
 import com.be.entity.Product;
 import com.be.entity.ProductAttribute;
@@ -51,24 +55,28 @@ public class SellerProductServiceImpl implements SellerProductService {
     private String cloudflareDomain;
 
     @Override
-    public Page<Product> getListByPage(long lastId, int page) {
-        return productRepository.getListByPage(lastId, PageRequest.of(page, Constant.PRODUCT_SIZE));
+    public Page<ProductListResponse> searchProducts(String keyword, Boolean isActive, int page) {
+        Page<Product> productPage = productRepository.searchProducts(keyword, isActive, PageRequest.of(page, Constant.PRODUCT_SIZE));
+        List<Long> ids = productPage.getContent().stream().map(Product::getId).toList();
+        List<Product> productsWithImages = productRepository.findAllWithImagesByIds(ids);
+        java.util.Map<Long, Product> productMap = productsWithImages.stream()
+                .collect(java.util.stream.Collectors.toMap(Product::getId, p -> p));
+        return productPage.map(p -> SellerProductMapper.toListResponse(productMap.getOrDefault(p.getId(), p)));
     }
 
+
     @Override
-    public Product getDetails(long id) {
-        return productRepository.findById(id)
+    public ProductDetailResponse getDetails(long id) {
+        Product product = productRepository.findByIdWithDetails(id)
                 .orElseThrow(() -> new EntityNotFoundException("Product not found with id: " + id));
+        return SellerProductMapper.toDetailResponse(product);
     }
 
-    @Override
-    public Page<Product> getListByStatus(Boolean isActive, long lastId, int page) {
-        return productRepository.getListByStatus(isActive, lastId, PageRequest.of(page, Constant.PRODUCT_SIZE));
-    }
+
 
     @Override
     @Transactional
-    public Product createProduct(ProductCreateRequest request) {
+    public ProductMutationResponse createProduct(ProductCreateRequest request) {
         Shop shop = getCurrentSellerShop();
         Category category = getCategory(request.categoryId());
 
@@ -89,12 +97,13 @@ public class SellerProductServiceImpl implements SellerProductService {
         product.setAttributes(buildAttributes(product, request.attributes()));
         product.setTags(buildTags(product, request.tags()));
 
-        return productRepository.save(product);
+        Product savedProduct = productRepository.save(product);
+        return SellerProductMapper.toMutationResponse(savedProduct);
     }
 
     @Override
     @Transactional
-    public Product updateProduct(long id, ProductUpdateRequest request) {
+    public ProductMutationResponse updateProduct(long id, ProductUpdateRequest request) {
         Product product = productRepository.findById(id)
                 .orElseThrow(() -> new EntityNotFoundException("Product not found with id: " + id));
 
@@ -158,7 +167,8 @@ public class SellerProductServiceImpl implements SellerProductService {
             product.getTags().addAll(buildTags(product, request.tags()));
         }
 
-        return productRepository.save(product);
+        Product savedProduct = productRepository.save(product);
+        return SellerProductMapper.toMutationResponse(savedProduct);
     }
 
     @Override
@@ -166,10 +176,7 @@ public class SellerProductServiceImpl implements SellerProductService {
         throw new UnsupportedOperationException("Not implemented yet");
     }
 
-    @Override
-    public Page<Product> searchByKeyword(String keyword, int page) {
-        return productRepository.searchByKeyword(keyword, PageRequest.of(page, Constant.PRODUCT_SIZE));
-    }
+
 
     private Shop getCurrentSellerShop() {
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();

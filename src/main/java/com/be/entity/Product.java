@@ -1,8 +1,11 @@
 package com.be.entity;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
 import lombok.*;
 import org.hibernate.annotations.CreationTimestamp;
+import org.hibernate.annotations.Fetch;
+import org.hibernate.annotations.FetchMode;
 import org.hibernate.annotations.UpdateTimestamp;
 import com.be.common.enums.ProductCondition;
 
@@ -12,11 +15,12 @@ import java.util.List;
 
 @Entity
 @Table(name = "products", indexes = {
-    @Index(name = "idx_products_shop", columnList = "shop_id"),
-    @Index(name = "idx_products_category", columnList = "category_id"),
-    @Index(name = "idx_products_condition", columnList = "product_condition"),
-    @Index(name = "idx_products_price", columnList = "sale_price,base_price"),
-    @Index(name = "idx_products_created", columnList = "created_at")
+        @Index(name = "idx_products_shop", columnList = "shop_id"),
+        @Index(name = "idx_products_category", columnList = "category_id"),
+        @Index(name = "idx_products_condition", columnList = "product_condition"),
+        @Index(name = "idx_products_price", columnList = "sale_price,base_price"),
+        @Index(name = "idx_products_created", columnList = "created_at"),
+        @Index(name = "idx_product_name_isActive_created", columnList = "name,is_active,created_at")
 })
 @Data
 @NoArgsConstructor
@@ -28,10 +32,12 @@ public class Product {
     private Long id;
     @ManyToOne
     @JoinColumn(name = "shop_id", nullable = false)
+    @JsonIgnore
     private Shop shop;
 
-    @ManyToOne
+    @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "category_id", nullable = true)
+    @JsonIgnore
     private Category category;
 
     @Column(nullable = false, length = 255)
@@ -47,7 +53,7 @@ public class Product {
     private String originCountry;
 
     @Enumerated(EnumType.STRING)
-    @Column(name = "product_condition",nullable = false)
+    @Column(name = "product_condition", nullable = false)
     @Builder.Default
     private ProductCondition condition = ProductCondition.GOOD;
 
@@ -82,22 +88,30 @@ public class Product {
     private LocalDateTime updatedAt;
 
     // Relationships
-    @OneToMany(mappedBy = "product", cascade = CascadeType.ALL, orphanRemoval = true)
+    @OneToMany(mappedBy = "product", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
+    @Fetch(FetchMode.SUBSELECT)
     private List<ProductImage> images;
 
-    @OneToMany(mappedBy = "product", cascade = CascadeType.ALL, orphanRemoval = true)
+    @OneToMany(mappedBy = "product", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
+    @JsonIgnore
+    @Fetch(FetchMode.SUBSELECT)
     private List<ProductAttribute> attributes;
 
-    @OneToMany(mappedBy = "product", cascade = CascadeType.ALL, orphanRemoval = true)
+    @OneToMany(mappedBy = "product", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
+    @JsonIgnore
+    @Fetch(FetchMode.SUBSELECT)
     private List<ProductTag> tags;
 
-    @OneToMany(mappedBy = "product", cascade = CascadeType.ALL, orphanRemoval = true)
+    @OneToMany(mappedBy = "product", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
+    @JsonIgnore
     private List<Review> reviews;
 
-    @OneToMany(mappedBy = "product", cascade = CascadeType.ALL, orphanRemoval = true)
+    @OneToMany(mappedBy = "product", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
+    @JsonIgnore
     private List<Comment> comments;
 
-    @OneToMany(mappedBy = "product", cascade = CascadeType.ALL, orphanRemoval = true)
+    @OneToMany(mappedBy = "product", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
+    @JsonIgnore
     private List<OrderItem> orderItems;
 }
 

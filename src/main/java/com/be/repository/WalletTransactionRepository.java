@@ -10,6 +10,7 @@ import org.springframework.stereotype.Repository;
 public interface WalletTransactionRepository extends JpaRepository<WalletTransaction, Long> {
     Page<WalletTransaction> findByWalletId(Long walletId, Pageable pageable);
 
+
     Page<WalletTransaction> findByOrderId(Long orderId, Pageable pageable);
 }
 

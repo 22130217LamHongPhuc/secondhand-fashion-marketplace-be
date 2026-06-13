@@ -12,12 +12,12 @@ import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.userdetails.UserDetails;
 
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 
 @Entity
 @Table(name = "users", indexes = {
-    @Index(name = "idx_users_role", columnList = "role"),
     @Index(name = "idx_users_provider", columnList = "auth_provider,provider_id")
 })
 @Data
@@ -43,11 +43,6 @@ public class User implements UserDetails{
 
     @Column(name = "avatar_url", columnDefinition = "TEXT", nullable = true)
     private String avatarUrl;
-
-    @Enumerated(EnumType.STRING)
-    @Column(nullable = false)
-    @Builder.Default
-    private UserRole role = UserRole.CUSTOMER;
 
     @Enumerated(EnumType.STRING)
     @Column(name = "auth_provider", nullable = false)
@@ -97,9 +92,18 @@ public class User implements UserDetails{
     @com.fasterxml.jackson.annotation.JsonIgnore
     private List<Comment> comments;
 
+    @OneToMany(mappedBy = "user", cascade = CascadeType.ALL, orphanRemoval = true)
+    @Builder.Default
+    private List<UserRoleMapping> userRoles = new ArrayList<>();
+
     @Override
     public Collection<? extends GrantedAuthority> getAuthorities() {
-        return List.of(new SimpleGrantedAuthority(role.name()));
+        return userRoles.stream()
+                .map(UserRoleMapping::getRole)
+                .map(Role::getName)
+                .map(UserRole::name)
+                .map(SimpleGrantedAuthority::new)
+                .toList();
     }
 
     @Override
