@@ -17,6 +17,8 @@ import com.be.repository.OrderRepository;
 import com.be.repository.ProductRepository;
 import com.be.repository.ReviewRepository;
 import com.be.repository.ShopRepository;
+import com.be.repository.CommentRepository;
+import com.be.repository.UserRepository;
 import com.be.service.ImageUploadExecutorService;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.BeforeEach;
@@ -63,6 +65,12 @@ class CustomerProductServiceImplTest {
 
     @Mock
     private ShopRepository shopRepository;
+
+    @Mock
+    private CommentRepository commentRepository;
+
+    @Mock
+    private UserRepository userRepository;
 
     @Mock
     private ImageUploadExecutorService imageUploadExecutorService;
@@ -122,6 +130,8 @@ class CustomerProductServiceImplTest {
         when(productRepository.findByIdAndIsActiveTrue(10L)).thenReturn(Optional.of(product));
         when(reviewRepository.findTop3ByProductIdAndIsVisibleTrueOrderByCreatedAtDescIdDesc(10L))
                 .thenReturn(List.of(reviewA, reviewB));
+        when(commentRepository.findTop3ByProductIdAndIsVisibleTrueOrderByCreatedAtDescIdDesc(10L))
+                .thenReturn(List.of());
 
         ProductDetailResponse response = customerProductService.getProductDetail(10L);
 
@@ -178,7 +188,6 @@ class CustomerProductServiceImplTest {
                 .id(1L)
                 .fullName("Customer Demo")
                 .email("customer@example.com")
-                .role(UserRole.CUSTOMER)
                 .build();
 
         Product product = Product.builder()
@@ -232,14 +241,12 @@ class CustomerProductServiceImplTest {
                 .id(1L)
                 .fullName("Customer Demo")
                 .email("customer@example.com")
-                .role(UserRole.CUSTOMER)
                 .build();
 
         User otherCustomer = User.builder()
                 .id(2L)
                 .fullName("Other Customer")
                 .email("other@example.com")
-                .role(UserRole.CUSTOMER)
                 .build();
 
         Product product = Product.builder()
@@ -284,7 +291,6 @@ class CustomerProductServiceImplTest {
                 .id(1L)
                 .fullName("Customer Demo")
                 .email("customer@example.com")
-                .role(UserRole.CUSTOMER)
                 .build();
 
         Product product = Product.builder()

@@ -1,6 +1,8 @@
 package com.be.service.customer.impl;
 
 import com.be.common.enums.OrderStatus;
+import com.be.dto.request.customer.CommentCreateRequest;
+import com.be.entity.Comment;
 import com.be.common.enums.UserRole;
 import com.be.dto.request.customer.ReviewCreateRequest;
 import com.be.dto.response.customer.*;
@@ -282,6 +284,78 @@ public class CustomerProductServiceImpl implements CustomerProductService {
         );
     }
 
+    @Override
+    @Transactional
+    public CommentResponse createComment(CommentCreateRequest request) {
+        User currentUser = getAuthenticatedUser();
+        Product product = productRepository.findByIdAndIsActiveTrue(request.productId())
+                .orElseThrow(() -> new EntityNotFoundException("Product not found with id: " + request.productId()));
+
+        Comment parentComment = null;
+        if (request.parentId() != null) {
+            parentComment = commentRepository.findById(request.parentId())
+                    .orElseThrow(() -> new EntityNotFoundException("Parent comment not found with id: " + request.parentId()));
+        }
+
+        Comment comment = Comment.builder()
+                .product(product)
+                .user(currentUser)
+                .parent(parentComment)
+                .content(request.content().trim())
+                .isVisible(true)
+                .build();
+
+        Comment savedComment = commentRepository.save(comment);
+        return toCommentResponse(savedComment);
+    }
+
+    @Override
+    public CommentPageResponse getProductComments(Long productId, int page, int size) {
+        Product product = productRepository.findByIdAndIsActiveTrue(productId)
+                .orElseThrow(() -> new EntityNotFoundException("Product not found with id: " + productId));
+
+        var pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "createdAt", "id"));
+        var commentPage = commentRepository.findByProductIdAndIsVisibleTrue(productId, pageable);
+
+        var items = commentPage.getContent().stream()
+                .map(this::toCommentResponse)
+                .toList();
+
+        return new CommentPageResponse(
+                items,
+                commentPage.getNumber(),
+                commentPage.getSize(),
+                commentPage.getTotalElements(),
+                commentPage.getTotalPages(),
+                commentPage.hasNext(),
+                commentPage.hasPrevious()
+        );
+    }
+
+    @Override
+    public ReviewPageResponse getProductReviews(Long productId, int page, int size) {
+        productRepository.findByIdAndIsActiveTrue(productId)
+                .orElseThrow(() -> new EntityNotFoundException("Product not found with id: " + productId));
+
+        var pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "createdAt", "id"));
+        var reviewPage = reviewRepository.findByProductId(productId, pageable);
+
+        var items = reviewPage.getContent().stream()
+                .filter(r -> Boolean.TRUE.equals(r.getIsVisible()))
+                .map(this::toProductDetailReview)
+                .toList();
+
+        return new ReviewPageResponse(
+                items,
+                reviewPage.getNumber(),
+                reviewPage.getSize(),
+                reviewPage.getTotalElements(),
+                reviewPage.getTotalPages(),
+                reviewPage.hasNext(),
+                reviewPage.hasPrevious()
+        );
+    }
+
     private Sort mapSortParameter(String sort) {
         if (sort == null) return Sort.by(Sort.Direction.DESC, "createdAt", "id");
         return switch (sort.toLowerCase()) {
@@ -352,7 +426,7 @@ public class CustomerProductServiceImpl implements CustomerProductService {
     @Override
     @Transactional
     public ReviewCreateResponse createReview(ReviewCreateRequest request) {
-        User currentUser = userRepository.findById(501L).orElseThrow(() -> new EntityNotFoundException("Authenticated customer not found"));
+        User currentUser = getAuthenticatedUser();
         Order order = orderRepository.findById(request.orderId())
                 .orElseThrow(() -> new EntityNotFoundException("Order not found with id: " + request.orderId()));
 
@@ -590,7 +664,7 @@ public class CustomerProductServiceImpl implements CustomerProductService {
         );
     }
 
-    private User getCurrentUser() {
+    private User getAuthenticatedUser() {
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
         if (authentication == null || !(authentication.getPrincipal() instanceof User user)) {
             throw new AccessDeniedException("Authenticated customer is required");
@@ -686,6 +760,20 @@ public class CustomerProductServiceImpl implements CustomerProductService {
         } catch (IOException exception) {
             throw new IllegalArgumentException("Could not read review image file", exception);
         }
+    }
+
+    private CommentResponse toCommentResponse(Comment comment) {
+        return new CommentResponse(
+                comment.getId(),
+                comment.getProduct() == null ? null : comment.getProduct().getId(),
+                comment.getUser() == null ? null : comment.getUser().getId(),
+                comment.getUser() == null ? null : comment.getUser().getFullName(),
+                comment.getUser() == null ? null : comment.getUser().getAvatarUrl(),
+                comment.getContent(),
+                comment.getParent() == null ? null : comment.getParent().getId(),
+                comment.getCreatedAt(),
+                comment.getUpdatedAt()
+        );
     }
 }
 
