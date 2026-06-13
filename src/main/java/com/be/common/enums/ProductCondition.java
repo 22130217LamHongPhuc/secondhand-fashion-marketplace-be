@@ -9,4 +9,3 @@ public enum ProductCondition {
     GOOD,
     FAIR
 }
-

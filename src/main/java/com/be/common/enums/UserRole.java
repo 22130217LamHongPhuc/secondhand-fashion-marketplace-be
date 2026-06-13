@@ -8,4 +8,3 @@ public enum UserRole {
     SELLER,
     ADMIN
 }
-

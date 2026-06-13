@@ -19,7 +19,7 @@ import java.time.LocalDate;
 @Builder
 public class RevenueSnapshot {
     @Id
-    @GeneratedValue(strategy = GenerationType.AUTO)
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
     @ManyToOne
