@@ -25,6 +25,9 @@ public class ProductImage {
     private Product product;
 
     @Column(columnDefinition = "TEXT", nullable = false)
+    private String key;
+
+    @Column(columnDefinition = "TEXT", nullable = false)
     private String url;
 
     @Column(name = "sort_order", nullable = false)
