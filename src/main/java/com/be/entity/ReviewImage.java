@@ -13,7 +13,7 @@ import lombok.*;
 @Builder
 public class ReviewImage {
     @Id
-    @GeneratedValue(strategy = GenerationType.AUTO)
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
     @ManyToOne

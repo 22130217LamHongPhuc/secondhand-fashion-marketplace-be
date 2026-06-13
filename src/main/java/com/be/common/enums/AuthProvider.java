@@ -8,4 +8,3 @@ public enum AuthProvider {
     GOOGLE,
     FACEBOOK
 }
-

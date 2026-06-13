@@ -21,7 +21,7 @@ import java.util.List;
 @Builder
 public class Shop {
     @Id
-    @GeneratedValue(strategy = GenerationType.AUTO)
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
     @OneToOne
@@ -60,6 +60,10 @@ public class Shop {
     @Builder.Default
     private Boolean isVerified = false;
 
+    @Column(name = "warning_strikes", nullable = false)
+    @Builder.Default
+    private Integer warningStrikes = 0;
+
     @CreationTimestamp
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;
@@ -68,7 +72,6 @@ public class Shop {
     @Column(name = "updated_at", nullable = false)
     private LocalDateTime updatedAt;
 
-    // Relationships
     @OneToMany(mappedBy = "shop", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
     @JsonIgnore
     private List<Product> products;

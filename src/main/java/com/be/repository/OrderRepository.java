@@ -5,32 +5,40 @@ import com.be.common.enums.OrderStatus;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 
 @Repository
 public interface OrderRepository extends JpaRepository<Order, Long> {
-    @Query(value = "SELECT * FROM orders o WHERE o.id > :lastId ORDER BY o.id ASC", nativeQuery = true)
-    Page<Order> getListByPage(@Param("lastId") Long lastId, Pageable pageable);
+    @Query(value = "SELECT o FROM Order o JOIN FETCH o.customer ORDER BY o.id ASC",
+           countQuery = "SELECT COUNT(o) FROM Order o")
+    Page<Order> getListByPage(Pageable pageable);
 
-    @Query(value = "SELECT * FROM orders o WHERE o.id > :lastId AND o.status = :status ORDER BY o.id ASC", nativeQuery = true)
+    @Query(value = "SELECT o FROM Order o JOIN FETCH o.customer WHERE o.status = :status ORDER BY o.id ASC",
+           countQuery = "SELECT COUNT(o) FROM Order o WHERE o.status = :status")
     Page<Order> getListByStatus(
-            @Param("status") String status,
-            @Param("lastId") Long lastId,
+            @Param("status") OrderStatus status,
             Pageable pageable
     );
 
-    @Query(value = "SELECT * FROM orders o WHERE o.created_at >= :startAt AND o.created_at < :endAt ORDER BY o.id ASC", nativeQuery = true)
+    @Query(value = "SELECT o FROM Order o JOIN FETCH o.customer WHERE o.createdAt >= :startAt AND o.createdAt < :endAt ORDER BY o.id ASC",
+           countQuery = "SELECT COUNT(o) FROM Order o WHERE o.createdAt >= :startAt AND o.createdAt < :endAt")
     Page<Order> getListByMonth(
             @Param("startAt") LocalDateTime startAt,
             @Param("endAt") LocalDateTime endAt,
             Pageable pageable
     );
+
+    @EntityGraph(attributePaths = {"customer", "items", "shippingAddress"})
+    @Query("SELECT o FROM Order o WHERE o.id = :id")
+    Optional<Order> findByIdWithDetails(@Param("id") Long id);
 
     Optional<Order> findByOrderCode(String orderCode);
 
@@ -42,8 +50,12 @@ public interface OrderRepository extends JpaRepository<Order, Long> {
 
     Page<Order> findByShopIdAndStatus(Long shopId, OrderStatus status, Pageable pageable);
 
+    Page<Order> findByStatus(OrderStatus status, Pageable pageable);
+
     long countByStatus(OrderStatus status);
 
+        @Query("SELECT COALESCE(SUM(o.subtotal), 0) FROM Order o")
+        BigDecimal sumTotalRevenue();
     @Query("""
             SELECT o.shop.id
             FROM Order o
