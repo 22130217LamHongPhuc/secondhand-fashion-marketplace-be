@@ -22,6 +22,9 @@ import com.be.common.enums.ComplaintStatus;
 import com.be.repository.CategoryRepository;
 import com.be.repository.ShopRepository;
 import com.be.repository.ComplaintRepository;
+import com.be.repository.RoleRepository;
+import com.be.entity.Role;
+import com.be.entity.UserRoleMapping;
 import java.util.List;
 
 @Service
@@ -34,6 +37,7 @@ public class AdminServiceImpl implements AdminService {
     private final CategoryRepository categoryRepository;
     private final ShopRepository shopRepository;
     private final ComplaintRepository complaintRepository;
+    private final RoleRepository roleRepository;
 
     @Override
     public AdminDashboardResponse getDashboardStats() {
@@ -85,7 +89,24 @@ public class AdminServiceImpl implements AdminService {
     public User updateUserRole(Long userId, String role) {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new RuntimeException("User not found"));
-        user.setRole(UserRole.valueOf(role.toUpperCase().replace("BUYER", "CUSTOMER")));
+        
+        String cleanedRole = role.toUpperCase().replace("ROLE_", "").replace("BUYER", "CUSTOMER");
+        UserRole userRole = UserRole.valueOf(cleanedRole);
+        
+        Role targetRole = roleRepository.findByName(userRole)
+                .orElseThrow(() -> new RuntimeException("Role not found: " + userRole));
+        
+        if (user.getUserRoles() == null) {
+            user.setUserRoles(new java.util.ArrayList<>());
+        } else {
+            user.getUserRoles().clear();
+        }
+        
+        user.getUserRoles().add(UserRoleMapping.builder()
+                .user(user)
+                .role(targetRole)
+                .build());
+                
         return userRepository.save(user);
     }
 
