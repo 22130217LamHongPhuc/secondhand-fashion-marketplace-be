@@ -7,6 +7,7 @@ import com.be.dto.response.seller.mapper.SellerShopMapper;
 import com.be.entity.Shop;
 import com.be.entity.User;
 import com.be.repository.ShopRepository;
+import com.be.repository.UserRepository;
 import com.be.service.ImageStoreService;
 import com.be.service.seller.SellerShopService;
 import com.be.utils.KeyGeneratorUtil;
@@ -31,7 +32,7 @@ public class SellerShopServiceImpl implements SellerShopService {
 
     private final ShopRepository shopRepository;
     private final ImageStoreService imageStoreService;
-
+    private final UserRepository userRepository;
     @Override
     @Transactional(readOnly = true)
     public ShopProfileResponse getMyShop() {
@@ -43,7 +44,6 @@ public class SellerShopServiceImpl implements SellerShopService {
     @Transactional
     public ShopProfileResponse createShop(ShopCreateRequest request) {
         User user = getCurrentUser();
-
         // 1. Kiểm tra user chưa có shop
         if (shopRepository.existsBySellerId(user.getId())) {
             throw new IllegalStateException("Cửa hàng đã tồn tại cho tài khoản này.");
@@ -64,6 +64,7 @@ public class SellerShopServiceImpl implements SellerShopService {
                 .name(request.name().trim())
                 .slug(slug)
                 .description(request.description() != null ? request.description().trim() : null)
+                .isActive(true)
                 .avatarUrl(avatarUrl)
                 .bannerUrl(bannerUrl)
                 .build();
@@ -114,8 +115,8 @@ public class SellerShopServiceImpl implements SellerShopService {
     }
 
     private Shop getCurrentSellerShop() {
-//        User user = getCurrentUser();
-        return shopRepository.findBySellerId(1L)
+        User user = getCurrentUser();
+        return shopRepository.findBySellerId(user.getId())
                 .orElseThrow(() -> new EntityNotFoundException("Không tìm thấy thông tin cửa hàng cho tài khoản này."));
     }
 
