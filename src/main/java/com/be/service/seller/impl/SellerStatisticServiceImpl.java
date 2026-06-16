@@ -7,6 +7,7 @@ import com.be.entity.User;
 import com.be.repository.SellerStatisticRepository;
 import com.be.repository.ShopRepository;
 import com.be.service.seller.SellerStatisticService;
+import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -32,9 +33,8 @@ public class SellerStatisticServiceImpl implements SellerStatisticService {
     private static final String[] CATEGORY_COLORS = {"#c75c2e", "#d4724a", "#f5c9a8", "#e8e5de", "#4b5563"};
 
     @Override
-    public SellerDashboardResponse getDashboardData(Long shopId, String revenuePeriod, LocalDate startDate, LocalDate endDate) {
-        Shop shop = resolveShop(shopId);
-        if (shop == null) return null;
+    public SellerDashboardResponse getDashboardData(String revenuePeriod, LocalDate startDate, LocalDate endDate) {
+        Shop shop = getCurrentSellerShop();
 
         Long resolvedShopId = shop.getId();
 
@@ -161,9 +161,8 @@ public class SellerStatisticServiceImpl implements SellerStatisticService {
     }
 
     @Override
-    public SellerAnalyticsResponse getAnalyticsData(Long shopId, int page, int size) {
-        Shop shop = resolveShop(shopId);
-        if (shop == null) return null;
+    public SellerAnalyticsResponse getAnalyticsData( int page, int size) {
+        Shop shop = getCurrentSellerShop();
 
         Long resolvedShopId = shop.getId();
         Long sellerId = shop.getSeller().getId();
@@ -254,17 +253,15 @@ public class SellerStatisticServiceImpl implements SellerStatisticService {
         return new SellerAnalyticsResponse(repSummary, metrics, pageData);
     }
 
-    private Shop resolveShop(Long shopId) {
-        if (shopId != null) {
-            return shopRepository.findById(shopId).orElse(null);
-        }
-
-        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
-        if (authentication != null && authentication.getPrincipal() instanceof User user) {
-            return shopRepository.findBySellerId(user.getId()).orElse(null);
-        }
-
-        // Fallback for permitAll or anonymous access
-        return shopRepository.findAll().stream().findFirst().orElse(null);
+    private Shop getCurrentSellerShop() {
+//        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+//        if (authentication == null || !(authentication.getPrincipal() instanceof User user)) {
+//            throw new IllegalStateException("Authenticated seller is required");
+//        }
+//
+//        return shopRepository.findBySellerId(user.getId())
+//                .orElseThrow(() -> new EntityNotFoundException("Shop not found for current seller"));
+        return shopRepository.findBySellerId(1L)
+                .orElseThrow(() -> new EntityNotFoundException("Shop not found for current seller"));
     }
 }
