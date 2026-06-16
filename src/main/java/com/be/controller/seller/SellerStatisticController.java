@@ -22,12 +22,11 @@ public class SellerStatisticController {
 
     @GetMapping("/dashboard")
     public ResponseEntity<ApiResponse<SellerDashboardResponse>> getDashboard(
-            @RequestParam(required = false) Long shopId,
             @RequestParam(defaultValue = "30_DAYS") String revenuePeriod,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate startDate,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate endDate
     ) {
-        SellerDashboardResponse data = sellerStatisticService.getDashboardData(shopId, revenuePeriod, startDate, endDate);
+        SellerDashboardResponse data = sellerStatisticService.getDashboardData(revenuePeriod, startDate, endDate);
         if (data == null) {
             return ResponseEntity.notFound().build();
         }
@@ -36,11 +35,10 @@ public class SellerStatisticController {
 
     @GetMapping("/analytics")
     public ResponseEntity<ApiResponse<SellerAnalyticsResponse>> getAnalytics(
-            @RequestParam(required = false) Long shopId,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "10") int size
     ) {
-        SellerAnalyticsResponse data = sellerStatisticService.getAnalyticsData(shopId, page, size);
+        SellerAnalyticsResponse data = sellerStatisticService.getAnalyticsData(page, size);
         if (data == null) {
             return ResponseEntity.notFound().build();
         }

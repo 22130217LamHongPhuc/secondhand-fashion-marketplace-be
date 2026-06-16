@@ -24,7 +24,7 @@ import java.time.LocalDate;
 public class SellerOrderController {
     private final SellerOrderService sellerOrderService;
 
-    @GetMapping
+    @GetMapping("all")
     public ResponseEntity<ApiResponse<Page<OrderListResponse>>> getListByPage(
             @RequestParam(defaultValue = "0") int page
     ) {
@@ -42,13 +42,14 @@ public class SellerOrderController {
         ));
     }
 
-    @GetMapping("/status")
-    public ResponseEntity<ApiResponse<Page<OrderListResponse>>> getListByStatus(
-            @RequestParam OrderStatus status,
-            @RequestParam(defaultValue = "0") int page
+    @GetMapping()
+    public ResponseEntity<ApiResponse<Page<OrderListResponse>>> getListByStatusAndOrderCode(
+            @RequestParam(required = false) OrderStatus status,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(required = false) String orderCode
     ) {
         return ResponseEntity.ok(ApiResponse.success(
-                sellerOrderService.getListByStatus(status, page),
+                sellerOrderService.getListByStatusAndOrderCode(status, orderCode, page),
                 "Get order list by status successfully"
         ));
     }

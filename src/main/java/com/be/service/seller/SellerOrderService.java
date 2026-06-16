@@ -9,7 +9,7 @@ import org.springframework.data.domain.Page;
 public interface SellerOrderService {
     Page<OrderListResponse> getListByPage(int page);
     OrderDetailResponse getDetails(Long id);
-    Page<OrderListResponse> getListByStatus(OrderStatus status, int page);
+    Page<OrderListResponse> getListByStatusAndOrderCode(OrderStatus status, String orderCode, int page );
     Page<OrderListResponse> getListByMonth(int year, int month, int page);
     OrderActionResponse confirmOrder(Long orderId);
     OrderActionResponse startDelivery(Long orderId);

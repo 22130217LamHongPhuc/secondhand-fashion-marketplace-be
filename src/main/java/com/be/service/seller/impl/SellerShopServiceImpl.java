@@ -43,7 +43,8 @@ public class SellerShopServiceImpl implements SellerShopService {
     @Override
     @Transactional
     public ShopProfileResponse createShop(ShopCreateRequest request) {
-        User user = getCurrentUser();
+//        User user = getCurrentUser();
+        User user = userRepository.findUserById(1L);
         // 1. Kiểm tra user chưa có shop
         if (shopRepository.existsBySellerId(user.getId())) {
             throw new IllegalStateException("Cửa hàng đã tồn tại cho tài khoản này.");
@@ -115,8 +116,8 @@ public class SellerShopServiceImpl implements SellerShopService {
     }
 
     private Shop getCurrentSellerShop() {
-        User user = getCurrentUser();
-        return shopRepository.findBySellerId(user.getId())
+//        User user = getCurrentUser();
+        return shopRepository.findBySellerId(1L)
                 .orElseThrow(() -> new EntityNotFoundException("Không tìm thấy thông tin cửa hàng cho tài khoản này."));
     }
 
