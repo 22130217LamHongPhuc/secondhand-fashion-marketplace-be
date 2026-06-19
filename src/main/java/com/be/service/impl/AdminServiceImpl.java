@@ -137,7 +137,21 @@ public class AdminServiceImpl implements AdminService {
     @Override
     @Transactional
     public Category saveCategory(Category category) {
-        return categoryRepository.save(category);
+        if (category.getId() != null) {
+            Category existing = categoryRepository.findById(category.getId())
+                    .orElseThrow(() -> new RuntimeException("Category not found with id: " + category.getId()));
+            
+            existing.setName(category.getName());
+            existing.setSlug(category.getSlug());
+            existing.setIconUrl(category.getIconUrl());
+            existing.setSortOrder(category.getSortOrder());
+            existing.setIsActive(category.getIsActive());
+            existing.setParent(category.getParent());
+            
+            return categoryRepository.save(existing);
+        } else {
+            return categoryRepository.save(category);
+        }
     }
 
     @Override

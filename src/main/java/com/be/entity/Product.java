@@ -110,7 +110,7 @@ public class Product {
     @JsonIgnore
     private List<Comment> comments;
 
-    @OneToMany(mappedBy = "product", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
+    @OneToMany(mappedBy = "product", fetch = FetchType.LAZY)
     @JsonIgnore
     private List<OrderItem> orderItems;
 }

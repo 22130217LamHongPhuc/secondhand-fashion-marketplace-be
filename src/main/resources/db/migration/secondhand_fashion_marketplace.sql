@@ -37,8 +37,11 @@ DROP TABLE IF EXISTS `comments`;
 DROP TABLE IF EXISTS `wallet_transactions`;
 DROP TABLE IF EXISTS `reviews`;
 DROP TABLE IF EXISTS `revenue_snapshots`;
+DROP TABLE IF EXISTS `campaign_products`;
 DROP TABLE IF EXISTS `products`;
 DROP TABLE IF EXISTS `orders`;
+DROP TABLE IF EXISTS `coupons`;
+DROP TABLE IF EXISTS `campaigns`;
 DROP TABLE IF EXISTS `wallets`;
 DROP TABLE IF EXISTS `user_addresses`;
 DROP TABLE IF EXISTS `shops`;
@@ -112,6 +115,51 @@ CREATE TABLE `shops` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 
+-- secondhand_fashion_marketplace.coupons definition
+
+CREATE TABLE `coupons` (
+  `id` bigint NOT NULL AUTO_INCREMENT,
+  `code` varchar(50) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `name` varchar(150) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `description` text COLLATE utf8mb4_unicode_ci,
+  `discount_type` enum('PERCENTAGE', 'FIXED_AMOUNT') COLLATE utf8mb4_unicode_ci NOT NULL,
+  `discount_value` decimal(15,2) NOT NULL,
+  `min_order_value` decimal(15,2) DEFAULT '0.00',
+  `max_discount_amount` decimal(15,2) DEFAULT NULL,
+  `usage_limit` int DEFAULT NULL,
+  `used_count` int DEFAULT 0,
+  `start_date` datetime(6) NOT NULL,
+  `end_date` datetime(6) NOT NULL,
+  `created_by` enum('ADMIN', 'SELLER') COLLATE utf8mb4_unicode_ci NOT NULL,
+  `shop_id` bigint DEFAULT NULL,
+  `is_active` bit(1) NOT NULL DEFAULT b'1',
+  `created_at` datetime(6) NOT NULL,
+  `updated_at` datetime(6) NOT NULL,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uq_coupons_code` (`code`),
+  KEY `idx_coupons_code` (`code`),
+  KEY `idx_coupons_shop` (`shop_id`),
+  CONSTRAINT `fk_coupons_shop` FOREIGN KEY (`shop_id`) REFERENCES `shops` (`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+
+-- secondhand_fashion_marketplace.campaigns definition
+
+CREATE TABLE `campaigns` (
+  `id` bigint NOT NULL AUTO_INCREMENT,
+  `name` varchar(200) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `description` text COLLATE utf8mb4_unicode_ci,
+  `banner_url` text COLLATE utf8mb4_unicode_ci,
+  `start_date` datetime(6) NOT NULL,
+  `end_date` datetime(6) NOT NULL,
+  `is_active` bit(1) NOT NULL DEFAULT b'1',
+  `created_at` datetime(6) NOT NULL,
+  `updated_at` datetime(6) NOT NULL,
+  PRIMARY KEY (`id`),
+  KEY `idx_campaigns_dates` (`start_date`, `end_date`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+
 -- secondhand_fashion_marketplace.user_addresses definition
 
 CREATE TABLE `user_addresses` (
@@ -150,6 +198,8 @@ CREATE TABLE `wallets` (
 CREATE TABLE `orders` (
   `shipping_fee` decimal(15,2) NOT NULL,
   `subtotal` decimal(15,2) NOT NULL,
+  `discount_amount` decimal(15,2) NOT NULL DEFAULT '0.00',
+  `coupon_id` bigint DEFAULT NULL,
   `created_at` datetime(6) NOT NULL,
   `customer_id` bigint NOT NULL,
   `delivered_at` datetime(6) DEFAULT NULL,
@@ -169,10 +219,12 @@ CREATE TABLE `orders` (
   KEY `idx_orders_shop` (`shop_id`),
   KEY `idx_orders_status` (`status`),
   KEY `idx_orders_created` (`created_at`),
+  KEY `idx_orders_coupon` (`coupon_id`),
   KEY `FKq2dfcmpxmg3lqseeacd48f12k` (`shipping_address_id`),
   CONSTRAINT `FK21gttsw5evi5bbsvleui69d7r` FOREIGN KEY (`shop_id`) REFERENCES `shops` (`id`),
   CONSTRAINT `FKq2dfcmpxmg3lqseeacd48f12k` FOREIGN KEY (`shipping_address_id`) REFERENCES `user_addresses` (`id`),
-  CONSTRAINT `FKsjfs85qf6vmcurlx43cnc16gy` FOREIGN KEY (`customer_id`) REFERENCES `users` (`id`)
+  CONSTRAINT `FKsjfs85qf6vmcurlx43cnc16gy` FOREIGN KEY (`customer_id`) REFERENCES `users` (`id`),
+  CONSTRAINT `fk_orders_coupon` FOREIGN KEY (`coupon_id`) REFERENCES `coupons` (`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 
@@ -203,6 +255,25 @@ CREATE TABLE `products` (
   KEY `idx_products_created` (`created_at`),
   CONSTRAINT `FK7kp8sbhxboponhx3lxqtmkcoj` FOREIGN KEY (`shop_id`) REFERENCES `shops` (`id`),
   CONSTRAINT `FKog2rp4qthbtt2lfyhfo32lsw9` FOREIGN KEY (`category_id`) REFERENCES `categories` (`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+
+-- secondhand_fashion_marketplace.campaign_products definition
+
+CREATE TABLE `campaign_products` (
+  `id` bigint NOT NULL AUTO_INCREMENT,
+  `campaign_id` bigint NOT NULL,
+  `product_id` bigint NOT NULL,
+  `campaign_price` decimal(15,2) NOT NULL,
+  `status` enum('PENDING', 'APPROVED', 'REJECTED') COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'PENDING',
+  `created_at` datetime(6) NOT NULL,
+  `updated_at` datetime(6) NOT NULL,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uq_campaign_product` (`campaign_id`, `product_id`),
+  KEY `idx_campaign_products_campaign` (`campaign_id`),
+  KEY `idx_campaign_products_product` (`product_id`),
+  CONSTRAINT `fk_campaign_products_campaign` FOREIGN KEY (`campaign_id`) REFERENCES `campaigns` (`id`),
+  CONSTRAINT `fk_campaign_products_product` FOREIGN KEY (`product_id`) REFERENCES `products` (`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 
@@ -293,6 +364,7 @@ CREATE TABLE `comments` (
 CREATE TABLE `order_items` (
   `quantity` int NOT NULL,
   `subtotal` decimal(15,2) NOT NULL,
+  `discount_amount` decimal(15,2) NOT NULL DEFAULT '0.00',
   `unit_price` decimal(15,2) NOT NULL,
   `id` bigint NOT NULL,
   `order_id` bigint NOT NULL,

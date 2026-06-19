@@ -5,7 +5,9 @@ import com.be.dto.response.customer.OrderDetailResponse;
 import com.be.dto.response.customer.OrderHistoryItemResponse;
 import com.be.dto.response.customer.OrderHistoryPageResponse;
 import com.be.entity.Order;
+import com.be.entity.OrderStatusLog;
 import com.be.repository.OrderRepository;
+import com.be.repository.OrderStatusLogRepository;
 import com.be.service.customer.CustomerOrderService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
@@ -23,6 +25,7 @@ import java.util.stream.Collectors;
 public class CustomerOrderServiceImpl implements CustomerOrderService {
 
     private final OrderRepository orderRepository;
+    private final OrderStatusLogRepository orderStatusLogRepository;
 
     @Override
     @Transactional(readOnly = true)
@@ -100,8 +103,17 @@ public class CustomerOrderServiceImpl implements CustomerOrderService {
         }
 
         order.setStatus(OrderStatus.CANCELLED);
-        order.setCancelReason(reason != null ? reason : "Khách hàng hủy đơn");
+        String cancelNote = reason != null ? reason : "Khách hàng hủy đơn";
+        order.setCancelReason(cancelNote);
         Order saved = orderRepository.save(order);
+
+        OrderStatusLog statusLog = OrderStatusLog.builder()
+                .order(saved)
+                .status(OrderStatus.CANCELLED)
+                .note(cancelNote)
+                .changedBy(saved.getCustomer())
+                .build();
+        orderStatusLogRepository.save(statusLog);
 
         // Eagerly initialize for response
         if (saved.getItems() != null) {

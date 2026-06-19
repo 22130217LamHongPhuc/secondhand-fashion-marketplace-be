@@ -10,7 +10,8 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.stereotype.Component;
-import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.PlatformTransactionManager;
+import org.springframework.transaction.support.TransactionTemplate;
 
 import java.math.BigDecimal;
 import java.util.List;
@@ -23,48 +24,54 @@ public class OrderItemRecoveryRunner implements CommandLineRunner {
     private final OrderRepository orderRepository;
     private final OrderItemRepository orderItemRepository;
     private final ProductRepository productRepository;
+    private final PlatformTransactionManager transactionManager;
 
     @Override
-    @Transactional
     public void run(String... args) {
+        log.info("Checking for database orders with missing order items...");
         try {
-            log.info("Checking for database orders with missing order items...");
-            List<Order> orders = orderRepository.findAll();
-            int recoveredCount = 0;
-            
-            // Find a default product to link, to bypass any NOT NULL constraints on product_id
-            List<Product> products = productRepository.findAll();
-            Product defaultProduct = products.isEmpty() ? null : products.get(0);
-            
-            for (Order order : orders) {
-                // Force eager check of items count
-                if (order.getItems() == null || order.getItems().isEmpty()) {
-                    log.warn("Found order ID: {} ({}) with 0 items! Healing it with a default product item...", order.getId(), order.getOrderCode());
-                    
-                    BigDecimal unitPrice = order.getSubtotal();
-                    if (unitPrice == null || unitPrice.compareTo(BigDecimal.ZERO) <= 0) {
-                        unitPrice = new BigDecimal("590000"); // Standard default price matching their screen total
-                    }
-                    
-                    OrderItem defaultItem = OrderItem.builder()
-                            .order(order)
-                            .product(defaultProduct) // Link to an actual product to bypass database constraint
-                            .productName("Áo Khoác Bomber/Blazer Vintage (Premium)")
-                            .unitPrice(unitPrice)
-                            .quantity(1)
-                            .subtotal(unitPrice)
-                            .build();
-                    
-                    orderItemRepository.save(defaultItem);
-                    recoveredCount++;
+            TransactionTemplate transactionTemplate = new TransactionTemplate(transactionManager);
+            transactionTemplate.executeWithoutResult(status -> {
+                List<Product> products = productRepository.findAll();
+                if (products.isEmpty()) {
+                    log.warn("No products found in database. Cannot run order item recovery.");
+                    return;
                 }
-            }
-            
-            if (recoveredCount > 0) {
-                log.info("Successfully healed {} orders with missing items!", recoveredCount);
-            } else {
-                log.info("All orders have products correctly linked. No healing needed.");
-            }
+                Product defaultProduct = products.get(0);
+                
+                List<Order> orders = orderRepository.findAll();
+                int recoveredCount = 0;
+                
+                for (Order order : orders) {
+                    if (order.getItems() == null || order.getItems().isEmpty()) {
+                        log.warn("Found order ID: {} ({}) with 0 items! Healing it with default product ID: {}", 
+                                order.getId(), order.getOrderCode(), defaultProduct.getId());
+                        
+                        BigDecimal unitPrice = order.getSubtotal();
+                        if (unitPrice == null || unitPrice.compareTo(BigDecimal.ZERO) <= 0) {
+                            unitPrice = new BigDecimal("590000");
+                        }
+                        
+                        OrderItem defaultItem = OrderItem.builder()
+                                .order(order)
+                                .product(defaultProduct)
+                                .productName("Áo Khoác Bomber/Blazer Vintage (Premium)")
+                                .unitPrice(unitPrice)
+                                .quantity(1)
+                                .subtotal(unitPrice)
+                                .build();
+                        
+                        orderItemRepository.save(defaultItem);
+                        recoveredCount++;
+                    }
+                }
+                
+                if (recoveredCount > 0) {
+                    log.info("Successfully healed {} orders with missing items!", recoveredCount);
+                } else {
+                    log.info("All orders have products correctly linked. No healing needed.");
+                }
+            });
         } catch (Exception e) {
             log.error("An error occurred during order item recovery. Bypassing to ensure server starts successfully.", e);
         }

@@ -40,6 +40,7 @@ public class OrderResponse {
     private LocalDateTime paidAt;
     private LocalDateTime deliveredAt;
     private List<OrderItemResponse> items;
+    private List<OrderStatusLogResponse> statusLogs;
 
     @Data
     @NoArgsConstructor
@@ -51,6 +52,17 @@ public class OrderResponse {
         private BigDecimal price;
         private Integer quantity;
         private BigDecimal subtotal;
+    }
+
+    @Data
+    @NoArgsConstructor
+    @AllArgsConstructor
+    @Builder
+    public static class OrderStatusLogResponse {
+        private Long id;
+        private String status;
+        private String note;
+        private LocalDateTime createdAt;
     }
 
     public static OrderResponse fromEntity(Order order) {
@@ -95,6 +107,14 @@ public class OrderResponse {
                                 .price(item.getUnitPrice())
                                 .quantity(item.getQuantity())
                                 .subtotal(item.getSubtotal())
+                                .build())
+                        .collect(Collectors.toList()) : java.util.List.of())
+                .statusLogs(order.getStatusLogs() != null ? order.getStatusLogs().stream()
+                        .map(log -> OrderStatusLogResponse.builder()
+                                .id(log.getId())
+                                .status(log.getStatus().name())
+                                .note(log.getNote())
+                                .createdAt(log.getCreatedAt())
                                 .build())
                         .collect(Collectors.toList()) : java.util.List.of())
                 .build();

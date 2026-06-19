@@ -59,39 +59,47 @@ public class SellerOrderServiceImpl implements SellerOrderService {
     @Override
     @Transactional
     public OrderActionResponse confirmOrder(Long orderId) {
-        Order order = updateOrderStatus(orderId, OrderStatus.CONFIRMED);
+        Order order = updateOrderStatus(orderId, OrderStatus.CONFIRMED, "Đơn hàng đã được xác nhận bởi cửa hàng");
         return SellerOrderMapper.toActionResponse(order);
     }
 
     @Override
     @Transactional
     public OrderActionResponse startDelivery(Long orderId) {
-        Order order = updateOrderStatus(orderId, OrderStatus.SHIPPING);
+        Order order = updateOrderStatus(orderId, OrderStatus.SHIPPING, "Đơn hàng đang được giao");
         return SellerOrderMapper.toActionResponse(order);
     }
 
     @Override
     @Transactional
     public OrderActionResponse completeOrder(Long orderId) {
-        Order order = updateOrderStatus(orderId, OrderStatus.DONE);
+        Order order = updateOrderStatus(orderId, OrderStatus.DONE, "Đơn hàng hoàn thành");
         return SellerOrderMapper.toActionResponse(order);
     }
 
     @Override
     @Transactional
     public OrderActionResponse cancelOrder(Long orderId, String cancelReason) {
-        Order order = updateOrderStatus(orderId, OrderStatus.CANCELLED);
+        Order order = updateOrderStatus(orderId, OrderStatus.CANCELLED, cancelReason != null ? cancelReason : "Cửa hàng hủy đơn");
         order.setCancelReason(cancelReason);
         Order savedOrder = orderRepository.save(order);
         return SellerOrderMapper.toActionResponse(savedOrder);
     }
 
-    private Order updateOrderStatus(Long orderId, OrderStatus status) {
+    private Order updateOrderStatus(Long orderId, OrderStatus status, String note) {
         Order order = orderRepository.findById(orderId)
                 .orElseThrow(() -> new IllegalArgumentException("Order not found with id: " + orderId));
 
         validateStatusTransition(order.getStatus(), status);
         order.setStatus(status);
+
+        OrderStatusLog log = OrderStatusLog.builder()
+                .order(order)
+                .status(status)
+                .note(note)
+                .build();
+        orderStatusLogRepository.save(log);
+
         return orderRepository.save(order);
     }
 
