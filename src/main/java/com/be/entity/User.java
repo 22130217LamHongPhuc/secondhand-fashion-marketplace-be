@@ -96,12 +96,6 @@ public class User implements UserDetails{
     @Builder.Default
     private List<UserRoleMapping> userRoles = new ArrayList<>();
 
-    public UserRole getRole() {
-        if (userRoles == null || userRoles.isEmpty()) {
-            return null;
-        }
-        return userRoles.get(0).getRole().getName();
-    }
 
     @Override
     public Collection<? extends GrantedAuthority> getAuthorities() {

@@ -24,8 +24,6 @@ public class ProductImage {
     @JsonIgnore
     private Product product;
 
-    @Column(columnDefinition = "TEXT", nullable = false)
-    private String imageKey;
 
     @Column(columnDefinition = "TEXT", nullable = false)
     private String url;
