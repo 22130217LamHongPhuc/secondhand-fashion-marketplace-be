@@ -40,8 +40,8 @@ public class SellerOrderServiceImpl implements SellerOrderService {
     }
 
     @Override
-    public Page<OrderListResponse> getListByStatus(OrderStatus status, int page) {
-        Page<Order> orders = orderRepository.getListByStatus(status, PageRequest.of(page, Constant.ORDER_SIZE));
+    public Page<OrderListResponse> getListByStatusAndOrderCode(OrderStatus status, String orderCode, int page) {
+        Page<Order> orders = orderRepository.getListByStatusAndOrderCode(status, orderCode, PageRequest.of(page, Constant.ORDER_SIZE));
         return orders.map(SellerOrderMapper::toListResponse);
     }
 

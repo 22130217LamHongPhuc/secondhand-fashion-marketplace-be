@@ -52,9 +52,9 @@ public class SellerProductController {
 
 
 
-    @PostMapping(consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    @PostMapping
     public ResponseEntity<ApiResponse<ProductMutationResponse>> createProduct(
-            @Valid @ModelAttribute ProductCreateRequest request
+            @Valid @RequestBody ProductCreateRequest request
     ) {
         return ResponseEntity.ok(ApiResponse.success(
                 sellerProductService.createProduct(request),

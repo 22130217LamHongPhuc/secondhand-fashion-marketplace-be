@@ -1,5 +1,6 @@
 package com.be.service.customer;
 
+import com.be.dto.request.customer.CommentCreateRequest;
 import com.be.dto.response.customer.CategoryItemResponse;
 import com.be.dto.response.customer.ProductCardResponse;
 import com.be.dto.response.customer.ProductDetailResponse;
@@ -8,6 +9,9 @@ import com.be.dto.response.customer.ReviewCreateResponse;
 import com.be.dto.response.customer.ShopDetailWithProductsResponse;
 import com.be.dto.response.customer.ShopProductPageResponse;
 import com.be.dto.response.customer.ShopPageResponse;
+import com.be.dto.response.customer.CommentResponse;
+import com.be.dto.response.customer.CommentPageResponse;
+import com.be.dto.response.customer.ReviewPageResponse;
 
 import java.util.List;
 
@@ -47,4 +51,11 @@ public interface CustomerProductService {
     ShopPageResponse listShops(int page, int size);
 
     ShopPageResponse searchShopsByName(String keyword, int page, int size);
+
+    // Comments
+    CommentResponse createComment(CommentCreateRequest request);
+
+    CommentPageResponse getProductComments(Long productId, int page, int size);
+
+    ReviewPageResponse getProductReviews(Long productId, int page, int size);
 }

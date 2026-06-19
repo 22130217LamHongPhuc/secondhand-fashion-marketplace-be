@@ -1,6 +1,8 @@
 package com.be.service.customer.impl;
 
 import com.be.common.enums.OrderStatus;
+import com.be.dto.request.customer.CommentCreateRequest;
+import com.be.entity.Comment;
 import com.be.common.enums.UserRole;
 import com.be.dto.request.customer.ReviewCreateRequest;
 import com.be.dto.response.customer.*;
@@ -66,8 +68,7 @@ public class CustomerProductServiceImpl implements CustomerProductService {
                         category.getName(),
                         category.getSlug(),
                         category.getIconUrl(),
-                        category.getSortOrder()
-                ))
+                        category.getSortOrder()))
                 .toList();
     }
 
@@ -91,8 +92,7 @@ public class CustomerProductServiceImpl implements CustomerProductService {
         List<Long> featuredShopIds = orderRepository.findTopShopIdsByOrderCountSince(
                 startAt,
                 OrderStatus.CANCELLED,
-                PageRequest.of(0, FEATURED_SHOP_LIMIT)
-        );
+                PageRequest.of(0, FEATURED_SHOP_LIMIT));
 
         if (featuredShopIds.isEmpty()) {
             return List.of();
@@ -134,8 +134,7 @@ public class CustomerProductServiceImpl implements CustomerProductService {
                         shop.getTotalReviews(),
                         shop.getIsActive(),
                         shop.getIsVerified(),
-                        shop.getCreatedAt()
-                ),
+                        shop.getCreatedAt()),
                 new ShopProductPageResponse(
                         items,
                         productPage.getNumber(),
@@ -143,9 +142,7 @@ public class CustomerProductServiceImpl implements CustomerProductService {
                         productPage.getTotalElements(),
                         productPage.getTotalPages(),
                         productPage.hasNext(),
-                        productPage.hasPrevious()
-                )
-        );
+                        productPage.hasPrevious()));
     }
 
     @Override
@@ -168,8 +165,7 @@ public class CustomerProductServiceImpl implements CustomerProductService {
                 productPage.getTotalElements(),
                 productPage.getTotalPages(),
                 productPage.hasNext(),
-                productPage.hasPrevious()
-        );
+                productPage.hasPrevious());
     }
 
     @Override
@@ -189,8 +185,7 @@ public class CustomerProductServiceImpl implements CustomerProductService {
                         shop.getTotalReviews(),
                         shop.getIsActive(),
                         shop.getIsVerified(),
-                        shop.getCreatedAt()
-                ))
+                        shop.getCreatedAt()))
                 .toList();
 
         return new ShopPageResponse(
@@ -200,8 +195,7 @@ public class CustomerProductServiceImpl implements CustomerProductService {
                 shopPage.getTotalElements(),
                 shopPage.getTotalPages(),
                 shopPage.hasNext(),
-                shopPage.hasPrevious()
-        );
+                shopPage.hasPrevious());
     }
 
     @Override
@@ -225,8 +219,7 @@ public class CustomerProductServiceImpl implements CustomerProductService {
                         shop.getTotalReviews(),
                         shop.getIsActive(),
                         shop.getIsVerified(),
-                        shop.getCreatedAt()
-                ))
+                        shop.getCreatedAt()))
                 .toList();
 
         return new ShopPageResponse(
@@ -236,8 +229,7 @@ public class CustomerProductServiceImpl implements CustomerProductService {
                 shopPage.getTotalElements(),
                 shopPage.getTotalPages(),
                 shopPage.hasNext(),
-                shopPage.hasPrevious()
-        );
+                shopPage.hasPrevious());
     }
 
     @Override
@@ -251,8 +243,7 @@ public class CustomerProductServiceImpl implements CustomerProductService {
             BigDecimal maxPrice,
             String sort,
             int page,
-            int size
-    ) {
+            int size) {
         Sort sortObj = mapSortParameter(sort);
         var pageable = PageRequest.of(page, size, sortObj);
 
@@ -278,12 +269,83 @@ public class CustomerProductServiceImpl implements CustomerProductService {
                 productPage.getTotalElements(),
                 productPage.getTotalPages(),
                 productPage.hasNext(),
-                productPage.hasPrevious()
-        );
+                productPage.hasPrevious());
+    }
+
+    @Override
+    @Transactional
+    public CommentResponse createComment(CommentCreateRequest request) {
+        User currentUser = getAuthenticatedUser();
+        Product product = productRepository.findByIdAndIsActiveTrue(request.productId())
+                .orElseThrow(() -> new EntityNotFoundException("Product not found with id: " + request.productId()));
+
+        Comment parentComment = null;
+        if (request.parentId() != null) {
+            parentComment = commentRepository.findById(request.parentId())
+                    .orElseThrow(() -> new EntityNotFoundException(
+                            "Parent comment not found with id: " + request.parentId()));
+        }
+
+        Comment comment = Comment.builder()
+                .product(product)
+                .user(currentUser)
+                .parent(parentComment)
+                .content(request.content().trim())
+                .isVisible(true)
+                .build();
+
+        Comment savedComment = commentRepository.save(comment);
+        return toCommentResponse(savedComment);
+    }
+
+    @Override
+    public CommentPageResponse getProductComments(Long productId, int page, int size) {
+        Product product = productRepository.findByIdAndIsActiveTrue(productId)
+                .orElseThrow(() -> new EntityNotFoundException("Product not found with id: " + productId));
+
+        var pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "createdAt", "id"));
+        var commentPage = commentRepository.findByProductIdAndIsVisibleTrue(productId, pageable);
+
+        var items = commentPage.getContent().stream()
+                .map(this::toCommentResponse)
+                .toList();
+
+        return new CommentPageResponse(
+                items,
+                commentPage.getNumber(),
+                commentPage.getSize(),
+                commentPage.getTotalElements(),
+                commentPage.getTotalPages(),
+                commentPage.hasNext(),
+                commentPage.hasPrevious());
+    }
+
+    @Override
+    public ReviewPageResponse getProductReviews(Long productId, int page, int size) {
+        productRepository.findByIdAndIsActiveTrue(productId)
+                .orElseThrow(() -> new EntityNotFoundException("Product not found with id: " + productId));
+
+        var pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "createdAt", "id"));
+        var reviewPage = reviewRepository.findByProductId(productId, pageable);
+
+        var items = reviewPage.getContent().stream()
+                .filter(r -> Boolean.TRUE.equals(r.getIsVisible()))
+                .map(this::toProductDetailReview)
+                .toList();
+
+        return new ReviewPageResponse(
+                items,
+                reviewPage.getNumber(),
+                reviewPage.getSize(),
+                reviewPage.getTotalElements(),
+                reviewPage.getTotalPages(),
+                reviewPage.hasNext(),
+                reviewPage.hasPrevious());
     }
 
     private Sort mapSortParameter(String sort) {
-        if (sort == null) return Sort.by(Sort.Direction.DESC, "createdAt", "id");
+        if (sort == null)
+            return Sort.by(Sort.Direction.DESC, "createdAt", "id");
         return switch (sort.toLowerCase()) {
             case "price_asc" -> Sort.by(Sort.Direction.ASC, "salePrice", "basePrice", "id");
             case "price_desc" -> Sort.by(Sort.Direction.DESC, "salePrice", "basePrice", "id");
@@ -293,7 +355,6 @@ public class CustomerProductServiceImpl implements CustomerProductService {
         };
     }
 
-    // Specifications
     private Specification<Product> isActiveTrue() {
         return (root, query, cb) -> cb.isTrue(root.get("isActive"));
     }
@@ -307,37 +368,43 @@ public class CustomerProductServiceImpl implements CustomerProductService {
     }
 
     private Specification<Product> keywordContains(String keyword) {
-        if (keyword == null || keyword.isBlank()) return null;
+        if (keyword == null || keyword.isBlank())
+            return null;
 
         String likeKeyword = "%" + keyword.trim().toLowerCase() + "%";
         return (root, query, cb) -> cb.or(
                 cb.like(cb.lower(root.get("name")), likeKeyword),
-                cb.like(cb.lower(root.get("brand")), likeKeyword)
-        );
+                cb.like(cb.lower(root.get("brand")), likeKeyword));
     }
 
     private Specification<Product> categoriesIn(List<Long> categoryIds) {
-        if (categoryIds == null || categoryIds.isEmpty()) return null;
+        if (categoryIds == null || categoryIds.isEmpty())
+            return null;
         return (root, query, cb) -> root.get("category").get("id").in(categoryIds);
     }
 
     private Specification<Product> conditionEquals(String condition) {
-        if (condition == null || condition.isBlank()) return null;
-        return (root, query, cb) -> cb.equal(root.get("condition"), com.be.common.enums.ProductCondition.valueOf(condition));
+        if (condition == null || condition.isBlank())
+            return null;
+        return (root, query, cb) -> cb.equal(root.get("condition"),
+                com.be.common.enums.ProductCondition.valueOf(condition));
     }
 
     private Specification<Product> brandsIn(List<String> brands) {
-        if (brands == null || brands.isEmpty()) return null;
+        if (brands == null || brands.isEmpty())
+            return null;
         return (root, query, cb) -> root.get("brand").in(brands);
     }
 
     private Specification<Product> originsIn(List<String> origins) {
-        if (origins == null || origins.isEmpty()) return null;
+        if (origins == null || origins.isEmpty())
+            return null;
         return (root, query, cb) -> root.get("originCountry").in(origins);
     }
 
     private Specification<Product> priceBetween(BigDecimal minPrice, BigDecimal maxPrice) {
-        if (minPrice == null && maxPrice == null) return null;
+        if (minPrice == null && maxPrice == null)
+            return null;
         return (root, query, cb) -> {
             if (minPrice != null && maxPrice != null) {
                 return cb.between(root.get("salePrice"), minPrice, maxPrice);
@@ -352,7 +419,7 @@ public class CustomerProductServiceImpl implements CustomerProductService {
     @Override
     @Transactional
     public ReviewCreateResponse createReview(ReviewCreateRequest request) {
-        User currentUser = userRepository.findById(501L).orElseThrow(() -> new EntityNotFoundException("Authenticated customer not found"));
+        User currentUser = getAuthenticatedUser();
         Order order = orderRepository.findById(request.orderId())
                 .orElseThrow(() -> new EntityNotFoundException("Order not found with id: " + request.orderId()));
 
@@ -381,9 +448,6 @@ public class CustomerProductServiceImpl implements CustomerProductService {
         return toReviewCreateResponse(savedReview);
     }
 
-
-
-
     private ProductCardResponse toProductCard(Product product) {
         BigDecimal discountAmount = getDiscountAmount(product.getBasePrice(), product.getSalePrice());
         return new ProductCardResponse(
@@ -395,8 +459,7 @@ public class CustomerProductServiceImpl implements CustomerProductService {
                 getThumbnailUrl(product),
                 product.getShop() == null ? null : product.getShop().getId(),
                 product.getShop() == null ? null : product.getShop().getName(),
-                product.getCreatedAt()
-        );
+                product.getCreatedAt());
     }
 
     private ProductDetailResponse toProductDetail(Product product) {
@@ -422,24 +485,23 @@ public class CustomerProductServiceImpl implements CustomerProductService {
                 mapImages(product),
                 mapAttributes(product),
                 mapTags(product),
-                product.getCategory() == null ? null : new ProductDetailCategoryResponse(
-                        product.getCategory().getId(),
-                        product.getCategory().getName(),
-                        product.getCategory().getSlug()
-                ),
-                product.getShop() == null ? null : new ProductDetailShopResponse(
-                        product.getShop().getId(),
-                        product.getShop().getName(),
-                        product.getShop().getSlug(),
-                        product.getShop().getAvatarUrl(),
-                        product.getShop().getIsVerified(),
-                        product.getShop().getRatingAvg(),
-                        product.getShop().getTotalReviews()
-                ),
+                product.getCategory() == null ? null
+                        : new ProductDetailCategoryResponse(
+                                product.getCategory().getId(),
+                                product.getCategory().getName(),
+                                product.getCategory().getSlug()),
+                product.getShop() == null ? null
+                        : new ProductDetailShopResponse(
+                                product.getShop().getId(),
+                                product.getShop().getName(),
+                                product.getShop().getSlug(),
+                                product.getShop().getAvatarUrl(),
+                                product.getShop().getIsVerified(),
+                                product.getShop().getRatingAvg(),
+                                product.getShop().getTotalReviews()),
                 mapLatestComments(product.getId()),
                 mapLatestReviews(product.getId()),
-                mapRelatedProducts(product)
-        );
+                mapRelatedProducts(product));
     }
 
     private List<ProductDetailCommentResponse> mapLatestComments(Long productId) {
@@ -459,8 +521,7 @@ public class CustomerProductServiceImpl implements CustomerProductService {
                 comment.getUser() == null ? null : comment.getUser().getFullName(),
                 comment.getUser() == null ? null : comment.getUser().getAvatarUrl(),
                 comment.getContent(),
-                comment.getCreatedAt()
-        );
+                comment.getCreatedAt());
     }
 
     private BigDecimal getDiscountAmount(BigDecimal basePrice, BigDecimal salePrice) {
@@ -482,8 +543,7 @@ public class CustomerProductServiceImpl implements CustomerProductService {
                         .filter(image -> image.getUrl() != null)
                         .min(Comparator.comparing(
                                 ProductImage::getSortOrder,
-                                Comparator.nullsLast(Integer::compareTo)
-                        )))
+                                Comparator.nullsLast(Integer::compareTo))))
                 .map(ProductImage::getUrl)
                 .orElse(null);
     }
@@ -502,8 +562,7 @@ public class CustomerProductServiceImpl implements CustomerProductService {
                         image.getId(),
                         image.getUrl(),
                         image.getSortOrder(),
-                        image.getIsPrimary()
-                ))
+                        image.getIsPrimary()))
                 .toList();
     }
 
@@ -516,8 +575,7 @@ public class CustomerProductServiceImpl implements CustomerProductService {
                 .map(attribute -> new ProductDetailAttributeResponse(
                         attribute.getId(),
                         attribute.getAttrKey(),
-                        attribute.getAttrValue()
-                ))
+                        attribute.getAttrValue()))
                 .toList();
     }
 
@@ -537,9 +595,8 @@ public class CustomerProductServiceImpl implements CustomerProductService {
         }
 
         return productRepository.findTop8ByCategoryIdAndIsActiveTrueAndIdNotOrderByCreatedAtDesc(
-                        product.getCategory().getId(),
-                        product.getId()
-                ).stream()
+                product.getCategory().getId(),
+                product.getId()).stream()
                 .map(this::toProductCard)
                 .toList();
     }
@@ -555,9 +612,10 @@ public class CustomerProductServiceImpl implements CustomerProductService {
     }
 
     private ProductDetailReviewResponse toProductDetailReview(Review review) {
-        List<String> imageUrls = review.getImages() == null ? List.of() : review.getImages().stream()
-                .map(img -> img.getUrl())
-                .toList();
+        List<String> imageUrls = review.getImages() == null ? List.of()
+                : review.getImages().stream()
+                        .map(img -> img.getUrl())
+                        .toList();
 
         return new ProductDetailReviewResponse(
                 review.getId(),
@@ -567,14 +625,14 @@ public class CustomerProductServiceImpl implements CustomerProductService {
                 review.getUser() == null ? null : review.getUser().getFullName(),
                 review.getUser() == null ? null : review.getUser().getAvatarUrl(),
                 imageUrls,
-                review.getCreatedAt()
-        );
+                review.getCreatedAt());
     }
 
     private ReviewCreateResponse toReviewCreateResponse(Review review) {
-        List<String> imageUrls = review.getImages() == null ? List.of() : review.getImages().stream()
-                .map(ReviewImage::getUrl)
-                .toList();
+        List<String> imageUrls = review.getImages() == null ? List.of()
+                : review.getImages().stream()
+                        .map(ReviewImage::getUrl)
+                        .toList();
 
         return new ReviewCreateResponse(
                 review.getId(),
@@ -586,27 +644,33 @@ public class CustomerProductServiceImpl implements CustomerProductService {
                 review.getUser() == null ? null : review.getUser().getFullName(),
                 review.getUser() == null ? null : review.getUser().getAvatarUrl(),
                 imageUrls,
-                review.getCreatedAt()
-        );
+                review.getCreatedAt());
     }
 
-    private User getCurrentUser() {
-        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
-        if (authentication == null || !(authentication.getPrincipal() instanceof User user)) {
-            throw new AccessDeniedException("Authenticated customer is required");
-        }
+    private User getAuthenticatedUser() {
 
-        if (user.getId() == null) {
-            throw new AccessDeniedException("Authenticated customer is required");
-        }
+        return userRepository.findById(501L)
+                .orElseThrow(() -> new AccessDeniedException("Authenticated customer is required"));
+        // Authentication authentication =
+        // SecurityContextHolder.getContext().getAuthentication();
+        // if (authentication == null || !(authentication.getPrincipal() instanceof User
+        // user)) {
+        // throw new AccessDeniedException("Authenticated customer is required");
+        // }
+        //
+        // if (user.getId() == null) {
+        // throw new AccessDeniedException("Authenticated customer is required");
+        // }
+        //
+        // boolean isCustomer = user.getUserRoles().stream()
+        // .anyMatch(mapping -> mapping.getRole() != null && mapping.getRole().getName()
+        // == UserRole.CUSTOMER);
+        // if (!isCustomer) {
+        // throw new AccessDeniedException("Only customer can review products");
+        // }
+        //
+        // return user;
 
-        boolean isCustomer = user.getUserRoles().stream()
-                .anyMatch(mapping -> mapping.getRole() != null && mapping.getRole().getName() == UserRole.CUSTOMER);
-        if (!isCustomer) {
-            throw new AccessDeniedException("Only customer can review products");
-        }
-
-        return user;
     }
 
     private void validateReviewOwnership(User currentUser, Order order, Long productId) {
@@ -675,7 +739,8 @@ public class CustomerProductServiceImpl implements CustomerProductService {
     }
 
     private byte[] toByteArray(MultipartFile file) {
-        try (InputStream inputStream = file.getInputStream(); ByteArrayOutputStream buffer = new ByteArrayOutputStream()) {
+        try (InputStream inputStream = file.getInputStream();
+                ByteArrayOutputStream buffer = new ByteArrayOutputStream()) {
             byte[] data = new byte[8192];
             int nRead;
             while ((nRead = inputStream.read(data, 0, data.length)) != -1) {
@@ -687,5 +752,17 @@ public class CustomerProductServiceImpl implements CustomerProductService {
             throw new IllegalArgumentException("Could not read review image file", exception);
         }
     }
-}
 
+    private CommentResponse toCommentResponse(Comment comment) {
+        return new CommentResponse(
+                comment.getId(),
+                comment.getProduct() == null ? null : comment.getProduct().getId(),
+                comment.getUser() == null ? null : comment.getUser().getId(),
+                comment.getUser() == null ? null : comment.getUser().getFullName(),
+                comment.getUser() == null ? null : comment.getUser().getAvatarUrl(),
+                comment.getContent(),
+                comment.getParent() == null ? null : comment.getParent().getId(),
+                comment.getCreatedAt(),
+                comment.getUpdatedAt());
+    }
+}

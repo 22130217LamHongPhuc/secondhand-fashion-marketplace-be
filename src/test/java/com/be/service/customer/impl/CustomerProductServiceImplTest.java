@@ -20,6 +20,7 @@ import com.be.repository.OrderRepository;
 import com.be.repository.ProductRepository;
 import com.be.repository.ReviewRepository;
 import com.be.repository.ShopRepository;
+
 import com.be.repository.UserRepository;
 import com.be.service.ImageUploadExecutorService;
 import org.junit.jupiter.api.Test;
@@ -69,13 +70,13 @@ class CustomerProductServiceImplTest {
     private ShopRepository shopRepository;
 
     @Mock
-    private ImageUploadExecutorService imageUploadExecutorService;
-
-    @Mock
     private CommentRepository commentRepository;
 
     @Mock
     private UserRepository userRepository;
+
+    @Mock
+    private ImageUploadExecutorService imageUploadExecutorService;
 
     @InjectMocks
     private CustomerProductServiceImpl customerProductService;
@@ -132,6 +133,8 @@ class CustomerProductServiceImplTest {
         when(productRepository.findByIdAndIsActiveTrue(10L)).thenReturn(Optional.of(product));
         when(reviewRepository.findTop3ByProductIdAndIsVisibleTrueOrderByCreatedAtDescIdDesc(10L))
                 .thenReturn(List.of(reviewA, reviewB));
+        when(commentRepository.findTop3ByProductIdAndIsVisibleTrueOrderByCreatedAtDescIdDesc(10L))
+                .thenReturn(List.of());
 
         ProductDetailResponse response = customerProductService.getProductDetail(10L);
 

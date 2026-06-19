@@ -9,6 +9,10 @@ import com.be.dto.response.customer.ReviewCreateResponse;
 import com.be.dto.response.customer.ShopDetailWithProductsResponse;
 import com.be.dto.response.customer.ShopProductPageResponse;
 import com.be.dto.response.customer.ShopPageResponse;
+import com.be.dto.request.customer.CommentCreateRequest;
+import com.be.dto.response.customer.CommentResponse;
+import com.be.dto.response.customer.CommentPageResponse;
+import com.be.dto.response.customer.ReviewPageResponse;
 import com.be.service.customer.CustomerProductService;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
@@ -151,6 +155,40 @@ public class CustomerProductController {
 		return ResponseEntity.ok(ApiResponse.success(
 				customerProductService.createReview(request),
 				"Tao danh gia thanh cong"
+		));
+	}
+
+	@PostMapping("/comments")
+	public ResponseEntity<ApiResponse<CommentResponse>> createComment(
+			@Validated @RequestBody CommentCreateRequest request
+	) {
+		return ResponseEntity.ok(ApiResponse.success(
+				customerProductService.createComment(request),
+				"Tao binh luan thanh cong"
+		));
+	}
+
+	@GetMapping("/products/{productId}/comments")
+	public ResponseEntity<ApiResponse<CommentPageResponse>> getProductComments(
+			@PathVariable Long productId,
+			@RequestParam(defaultValue = "0") @Min(0) int page,
+			@RequestParam(defaultValue = "10") @Min(1) @Max(50) int size
+	) {
+		return ResponseEntity.ok(ApiResponse.success(
+				customerProductService.getProductComments(productId, page, size),
+				"Lay danh sach binh luan thanh cong"
+		));
+	}
+
+	@GetMapping("/products/{productId}/reviews")
+	public ResponseEntity<ApiResponse<ReviewPageResponse>> getProductReviews(
+			@PathVariable Long productId,
+			@RequestParam(defaultValue = "0") @Min(0) int page,
+			@RequestParam(defaultValue = "10") @Min(1) @Max(50) int size
+	) {
+		return ResponseEntity.ok(ApiResponse.success(
+				customerProductService.getProductReviews(productId, page, size),
+				"Lay danh sach danh gia thanh cong"
 		));
 	}
 }

@@ -21,10 +21,11 @@ public interface OrderRepository extends JpaRepository<Order, Long> {
            countQuery = "SELECT COUNT(o) FROM Order o")
     Page<Order> getListByPage(Pageable pageable);
 
-    @Query(value = "SELECT o FROM Order o JOIN FETCH o.customer WHERE o.status = :status ORDER BY o.id ASC",
+    @Query(value = "SELECT o FROM Order o JOIN FETCH o.customer WHERE o.status = :status and o.orderCode = :orderCode ORDER BY o.id ASC",
            countQuery = "SELECT COUNT(o) FROM Order o WHERE o.status = :status")
-    Page<Order> getListByStatus(
+    Page<Order> getListByStatusAndOrderCode(
             @Param("status") OrderStatus status,
+            @Param("orderCode") String orderCode,
             Pageable pageable
     );
 

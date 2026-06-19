@@ -14,6 +14,10 @@ public interface ShopRepository extends JpaRepository<Shop, Long> {
 
     Optional<Shop> findBySellerId(Long sellerId);
 
+    boolean existsBySellerId(Long sellerId);
+
+    boolean existsBySlug(String slug);
+
     long countByIsVerified(Boolean isVerified);
 
     org.springframework.data.domain.Page<Shop> findByIsActiveTrue(org.springframework.data.domain.Pageable pageable);

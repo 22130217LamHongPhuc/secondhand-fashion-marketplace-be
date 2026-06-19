@@ -19,7 +19,7 @@ public interface ProductRepository extends JpaRepository<Product, Long>, JpaSpec
             SELECT p FROM Product p
             WHERE (:keyword IS NULL OR LOWER(p.name) LIKE LOWER(CONCAT('%', :keyword, '%')))
               AND (:isActive IS NULL OR p.isActive = :isActive)
-            ORDER BY p.id ASC
+            ORDER BY p.createdAt DESC
             """)
     Page<Product> searchProducts(
             @Param("keyword") String keyword,
