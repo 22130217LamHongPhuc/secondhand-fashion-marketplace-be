@@ -58,6 +58,15 @@ public class Order {
     @Builder.Default
     private BigDecimal shippingFee = BigDecimal.ZERO;
 
+    @Column(name = "discount_amount", nullable = false, precision = 15, scale = 2)
+    @Builder.Default
+    private BigDecimal discountAmount = BigDecimal.ZERO;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "coupon_id", nullable = true)
+    private Coupon coupon;
+
+
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
     @Builder.Default

@@ -134,8 +134,17 @@ public class CustomerOrderServiceImpl implements CustomerOrderService {
         }
 
         order.setStatus(OrderStatus.CANCELLED);
-        order.setCancelReason(reason != null ? reason : "Khách hàng hủy đơn");
+        String cancelNote = reason != null ? reason : "Khách hàng hủy đơn";
+        order.setCancelReason(cancelNote);
         Order saved = orderRepository.save(order);
+
+        OrderStatusLog statusLog = OrderStatusLog.builder()
+                .order(saved)
+                .status(OrderStatus.CANCELLED)
+                .note(cancelNote)
+                .changedBy(saved.getCustomer())
+                .build();
+        orderStatusLogRepository.save(statusLog);
 
         // Eagerly initialize for response
         if (saved.getItems() != null) {

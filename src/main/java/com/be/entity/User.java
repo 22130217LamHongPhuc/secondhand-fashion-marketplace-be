@@ -121,12 +121,6 @@ public class User implements UserDetails{
     @EqualsAndHashCode.Exclude
     private List<UserRoleMapping> userRoles = new ArrayList<>();
 
-    public UserRole getRole() {
-        if (userRoles == null || userRoles.isEmpty()) {
-            return null;
-        }
-        return userRoles.get(0).getRole().getName();
-    }
 
     @Override
     public Collection<? extends GrantedAuthority> getAuthorities() {
@@ -136,6 +130,13 @@ public class User implements UserDetails{
                 .map(UserRole::name)
                 .map(SimpleGrantedAuthority::new)
                 .toList();
+    }
+
+    public UserRole getRole() {
+        if (userRoles == null || userRoles.isEmpty() || userRoles.get(0) == null || userRoles.get(0).getRole() == null) {
+            return null;
+        }
+        return userRoles.get(0).getRole().getName();
     }
 
     @Override

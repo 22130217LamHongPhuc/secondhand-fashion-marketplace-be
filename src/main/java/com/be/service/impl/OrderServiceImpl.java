@@ -2,7 +2,9 @@ package com.be.service.impl;
 
 import com.be.common.enums.OrderStatus;
 import com.be.entity.Order;
+import com.be.entity.OrderStatusLog;
 import com.be.repository.OrderRepository;
+import com.be.repository.OrderStatusLogRepository;
 import com.be.service.OrderService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
@@ -17,6 +19,7 @@ import java.time.LocalDateTime;
 public class OrderServiceImpl implements OrderService {
 
     private final OrderRepository orderRepository;
+    private final OrderStatusLogRepository orderStatusLogRepository;
 
     @Override
     @Transactional(readOnly = true)
@@ -38,6 +41,9 @@ public class OrderServiceImpl implements OrderService {
         if (order.getItems() != null) {
             order.getItems().size(); // Eagerly load items list
         }
+        if (order.getStatusLogs() != null) {
+            order.getStatusLogs().size(); // Eagerly load status logs list
+        }
         return order;
     }
 
@@ -50,6 +56,13 @@ public class OrderServiceImpl implements OrderService {
         if (status == OrderStatus.DONE) {
             order.setDeliveredAt(LocalDateTime.now());
         }
+
+        OrderStatusLog statusLog = OrderStatusLog.builder()
+                .order(order)
+                .status(status)
+                .note("Cập nhật trạng thái bởi quản trị viên")
+                .build();
+        orderStatusLogRepository.save(statusLog);
         
         return orderRepository.save(order);
     }
@@ -65,6 +78,13 @@ public class OrderServiceImpl implements OrderService {
         
         order.setStatus(OrderStatus.CANCELLED);
         order.setCancelReason(reason);
+
+        OrderStatusLog statusLog = OrderStatusLog.builder()
+                .order(order)
+                .status(OrderStatus.CANCELLED)
+                .note(reason != null ? reason : "Đơn hàng bị hủy bởi quản trị viên")
+                .build();
+        orderStatusLogRepository.save(statusLog);
         
         return orderRepository.save(order);
     }

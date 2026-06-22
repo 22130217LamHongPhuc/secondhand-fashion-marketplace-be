@@ -554,7 +554,7 @@ public class SellerSeeder implements CommandLineRunner {
                 ProductImage.builder()
                         .product(product)
                         .url("https://placehold.co/800x1000?text=" + slug + "-front")
-                        .imageKey("key")
+                        .imageKey("seeder/" + slug + "-front")
                         .sortOrder(0)
                         .isPrimary(true)
                         .build(),
@@ -562,7 +562,7 @@ public class SellerSeeder implements CommandLineRunner {
                 ProductImage.builder()
                         .product(product)
                         .url("https://placehold.co/800x1000?text=" + slug + "-detail")
-                        .imageKey("key")
+                        .imageKey("seeder/" + slug + "-detail")
                         .sortOrder(1)
                         .isPrimary(false)
                         .build()

@@ -12,12 +12,15 @@ import com.be.entity.Product;
 import com.be.entity.Review;
 import com.be.entity.Shop;
 import com.be.entity.User;
+import com.be.entity.Role;
+import com.be.entity.UserRoleMapping;
 import com.be.repository.CategoryRepository;
+import com.be.repository.CommentRepository;
 import com.be.repository.OrderRepository;
 import com.be.repository.ProductRepository;
 import com.be.repository.ReviewRepository;
 import com.be.repository.ShopRepository;
-import com.be.repository.CommentRepository;
+
 import com.be.repository.UserRepository;
 import com.be.service.ImageUploadExecutorService;
 import org.junit.jupiter.api.Test;
@@ -185,9 +188,12 @@ class CustomerProductServiceImplTest {
     @Test
     void createReview_shouldAllowBuyerWhenOrderDone() {
         User customer = User.builder()
-                .id(1L)
+                .id(501L)
                 .fullName("Customer Demo")
                 .email("customer@example.com")
+                .userRoles(List.of(UserRoleMapping.builder()
+                        .role(Role.builder().name(UserRole.CUSTOMER).build())
+                        .build()))
                 .build();
 
         Product product = Product.builder()
@@ -215,6 +221,7 @@ class CustomerProductServiceImplTest {
                 new UsernamePasswordAuthenticationToken(customer, null, customer.getAuthorities())
         ));
 
+        when(userRepository.findById(501L)).thenReturn(Optional.of(customer));
         when(orderRepository.findById(77L)).thenReturn(Optional.of(order));
         when(reviewRepository.findByOrderIdAndProductId(77L, 88L)).thenReturn(Optional.empty());
         when(reviewRepository.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
@@ -238,15 +245,21 @@ class CustomerProductServiceImplTest {
     @Test
     void createReview_shouldRejectWhenOrderDoesNotBelongToCurrentUser() {
         User currentUser = User.builder()
-                .id(1L)
+                .id(501L)
                 .fullName("Customer Demo")
                 .email("customer@example.com")
+                .userRoles(List.of(UserRoleMapping.builder()
+                        .role(Role.builder().name(UserRole.CUSTOMER).build())
+                        .build()))
                 .build();
 
         User otherCustomer = User.builder()
                 .id(2L)
                 .fullName("Other Customer")
                 .email("other@example.com")
+                .userRoles(List.of(UserRoleMapping.builder()
+                        .role(Role.builder().name(UserRole.CUSTOMER).build())
+                        .build()))
                 .build();
 
         Product product = Product.builder()
@@ -274,6 +287,7 @@ class CustomerProductServiceImplTest {
                 new UsernamePasswordAuthenticationToken(currentUser, null, currentUser.getAuthorities())
         ));
 
+        when(userRepository.findById(501L)).thenReturn(Optional.of(currentUser));
         when(orderRepository.findById(77L)).thenReturn(Optional.of(order));
 
         assertThatThrownBy(() -> customerProductService.createReview(new ReviewCreateRequest(
@@ -288,9 +302,12 @@ class CustomerProductServiceImplTest {
     @Test
     void createReview_shouldRejectWhenOrderIsNotDone() {
         User customer = User.builder()
-                .id(1L)
+                .id(501L)
                 .fullName("Customer Demo")
                 .email("customer@example.com")
+                .userRoles(List.of(UserRoleMapping.builder()
+                        .role(Role.builder().name(UserRole.CUSTOMER).build())
+                        .build()))
                 .build();
 
         Product product = Product.builder()
@@ -317,6 +334,7 @@ class CustomerProductServiceImplTest {
                 new UsernamePasswordAuthenticationToken(customer, null, customer.getAuthorities())
         ));
 
+        when(userRepository.findById(501L)).thenReturn(Optional.of(customer));
         when(orderRepository.findById(77L)).thenReturn(Optional.of(order));
 
         assertThatThrownBy(() -> customerProductService.createReview(new ReviewCreateRequest(

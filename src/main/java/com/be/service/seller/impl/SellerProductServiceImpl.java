@@ -210,6 +210,7 @@ public class SellerProductServiceImpl implements SellerProductService {
                 .orElseThrow(() -> new EntityNotFoundException("Category not found with id: " + categoryId));
     }
 
+
     private List<ProductAttribute> buildAttributes(Product product, List<ProductAttributeRequest> attributes) {
         if (attributes == null) {
             return List.of();

@@ -38,7 +38,11 @@ public class UserResponse {
         if (user.getOrders() != null) {
             calculatedTotalSpent = user.getOrders().stream()
                     .filter(order -> order.getStatus() != com.be.common.enums.OrderStatus.CANCELLED)
-                    .mapToLong(order -> order.getSubtotal().add(order.getShippingFee()).longValue())
+                    .mapToLong(order -> {
+                        java.math.BigDecimal sub = order.getSubtotal() != null ? order.getSubtotal() : java.math.BigDecimal.ZERO;
+                        java.math.BigDecimal ship = order.getShippingFee() != null ? order.getShippingFee() : java.math.BigDecimal.ZERO;
+                        return sub.add(ship).longValue();
+                    })
                     .sum();
         }
 
@@ -56,8 +60,8 @@ public class UserResponse {
                 .avatar(user.getAvatarUrl())
                 .avatarUrl(user.getAvatarUrl())
                 .role(user.getRole())
-                .status(user.getIsActive() ? "active" : "banned")
-                .isActive(user.getIsActive())
+                .status(active ? "active" : "banned")
+                .isActive(active)
                 .authProvider(user.getAuthProvider())
                 .createdAt(user.getCreatedAt())
                 .updatedAt(user.getUpdatedAt())
