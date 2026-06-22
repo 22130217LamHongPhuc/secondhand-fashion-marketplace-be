@@ -498,7 +498,8 @@ public class CustomerProductServiceImpl implements CustomerProductService {
                                 product.getShop().getAvatarUrl(),
                                 product.getShop().getIsVerified(),
                                 product.getShop().getRatingAvg(),
-                                product.getShop().getTotalReviews()),
+                                product.getShop().getTotalReviews(),
+                                product.getShop().getSeller() == null ? null : product.getShop().getSeller().getId()),
                 mapLatestComments(product.getId()),
                 mapLatestReviews(product.getId()),
                 mapRelatedProducts(product));

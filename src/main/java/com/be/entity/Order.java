@@ -26,6 +26,8 @@ import java.util.List;
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
+@EqualsAndHashCode(exclude = {"items", "statusLogs", "reviews", "walletTransactions", "customer", "shop", "shippingAddress"})
+@ToString(exclude = {"items", "statusLogs", "reviews", "walletTransactions", "customer", "shop", "shippingAddress"})
 public class Order {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -85,6 +87,9 @@ public class Order {
 
     @Column(name = "paid_at", nullable = true)
     private LocalDateTime paidAt;
+
+    @Column(name = "payment_ref", length = 30, nullable = true)
+    private String paymentRef;
 
     @Column(name = "delivered_at", nullable = true)
     private LocalDateTime deliveredAt;

@@ -17,6 +17,8 @@ import java.time.LocalDateTime;
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
+@EqualsAndHashCode(exclude = {"order", "changedBy"})
+@ToString(exclude = {"order", "changedBy"})
 public class OrderStatusLog {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)

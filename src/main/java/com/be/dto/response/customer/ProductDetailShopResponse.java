@@ -9,7 +9,8 @@ public record ProductDetailShopResponse(
         String avatarUrl,
         Boolean isVerified,
         BigDecimal ratingAvg,
-        Integer totalReviews
+        Integer totalReviews,
+        Long sellerId
 ) {
 }
 

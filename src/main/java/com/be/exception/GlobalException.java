@@ -153,7 +153,8 @@ public class GlobalException {
             Exception exception,
             HttpServletRequest request
     ) {
-        return buildResponse(HttpStatus.INTERNAL_SERVER_ERROR, "Internal server error", request);
+        exception.printStackTrace();
+        return buildResponse(HttpStatus.INTERNAL_SERVER_ERROR, "Internal server error: " + exception.getMessage(), request);
     }
 
     private ResponseEntity<ApiErrorResponse> buildResponse(
