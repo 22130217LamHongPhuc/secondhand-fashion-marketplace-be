@@ -27,10 +27,13 @@ public interface ProductRepository extends JpaRepository<Product, Long>, JpaSpec
             Pageable pageable
     );
 
+    @Query("SELECT DISTINCT p FROM Product p LEFT JOIN FETCH p.category LEFT JOIN FETCH p.shop LEFT JOIN FETCH p.images ORDER BY p.id DESC")
+    List<Product> findAllWithDetails();
+
     @Query("SELECT p FROM Product p LEFT JOIN FETCH p.images WHERE p.id IN :ids ORDER BY p.id ASC")
     List<Product> findAllWithImagesByIds(@Param("ids") List<Long> ids);
 
-    @Query(value = "SELECT p FROM Product p WHERE p.id = :id")
+    @Query("SELECT p FROM Product p LEFT JOIN FETCH p.category LEFT JOIN FETCH p.shop LEFT JOIN FETCH p.images WHERE p.id = :id")
     Optional<Product> findByIdWithDetails(@Param("id") long id);
 
     Page<Product> findByShopIdAndIsActiveTrue(Long shopId, Pageable pageable);

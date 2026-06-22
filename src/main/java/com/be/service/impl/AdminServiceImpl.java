@@ -26,9 +26,13 @@ import com.be.repository.RoleRepository;
 import com.be.entity.Role;
 import com.be.entity.UserRoleMapping;
 import java.util.List;
+import com.be.entity.Role;
+import com.be.entity.UserRoleMapping;
+import com.be.repository.RoleRepository;
 
 @Service
 @RequiredArgsConstructor
+@Transactional(readOnly = true)
 public class AdminServiceImpl implements AdminService {
 
     private final UserRepository userRepository;
@@ -50,15 +54,15 @@ public class AdminServiceImpl implements AdminService {
                 .totalProducts(productRepository.count())
                 .totalOrders(orderRepository.count())
                 .totalRevenue(totalRevenue)
-                .activeUsers(userRepository.findAll().stream().filter(User::getIsActive).count()) // Note: Should optimize this count later
+                .activeUsers(userRepository.countByIsActiveTrue())
                 .pendingOrders(orderRepository.countByStatus(OrderStatus.PENDING))
                 .recentOrders(orderRepository.findAll(org.springframework.data.domain.PageRequest.of(0, 5, org.springframework.data.domain.Sort.by(org.springframework.data.domain.Sort.Direction.DESC, "createdAt")))
                         .getContent().stream()
                         .map(order -> AdminDashboardResponse.OrderSummary.builder()
                         .id(String.valueOf(order.getId()))
                                 .customerName(order.getCustomer() != null ? order.getCustomer().getFullName() : "Unknown")
-                                .total(order.getSubtotal())
-                                .status(order.getStatus().name())
+                                .total(order.getSubtotal() != null ? order.getSubtotal() : BigDecimal.ZERO)
+                                .status(order.getStatus() != null ? order.getStatus().name() : "UNKNOWN")
                                 .build())
                         .collect(java.util.stream.Collectors.toList()))
                 .build();
@@ -89,7 +93,6 @@ public class AdminServiceImpl implements AdminService {
     public User updateUserRole(Long userId, String role) {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new RuntimeException("User not found"));
-        
         String cleanedRole = role.toUpperCase().replace("ROLE_", "").replace("BUYER", "CUSTOMER");
         UserRole userRole = UserRole.valueOf(cleanedRole);
         
@@ -106,7 +109,6 @@ public class AdminServiceImpl implements AdminService {
                 .user(user)
                 .role(targetRole)
                 .build());
-                
         return userRepository.save(user);
     }
 
@@ -135,7 +137,21 @@ public class AdminServiceImpl implements AdminService {
     @Override
     @Transactional
     public Category saveCategory(Category category) {
-        return categoryRepository.save(category);
+        if (category.getId() != null) {
+            Category existing = categoryRepository.findById(category.getId())
+                    .orElseThrow(() -> new RuntimeException("Category not found with id: " + category.getId()));
+            
+            existing.setName(category.getName());
+            existing.setSlug(category.getSlug());
+            existing.setIconUrl(category.getIconUrl());
+            existing.setSortOrder(category.getSortOrder());
+            existing.setIsActive(category.getIsActive());
+            existing.setParent(category.getParent());
+            
+            return categoryRepository.save(existing);
+        } else {
+            return categoryRepository.save(category);
+        }
     }
 
     @Override
