@@ -55,29 +55,22 @@ public class VNPayUtil {
         }
     }
 
+    /**
+     * Build the hash string from the VNPay response parameters and compute HMAC-SHA512.
+     * Theo chuẩn chính thức VNPAY Java: các fields trong map ĐÃ được URLEncoder.encode(US_ASCII)
+     * trước khi truyền vào (trong VNPayController), nên ở đây chỉ cần join và hash.
+     */
     public static String hashAllFields(Map<String, String> fields) {
         List<String> fieldNames = new ArrayList<>(fields.keySet());
         Collections.sort(fieldNames);
-        StringBuilder sb = new StringBuilder();
-        Iterator<String> itr = fieldNames.iterator();
-        while (itr.hasNext()) {
-            String fieldName = itr.next();
+        StringJoiner joiner = new StringJoiner("&");
+        for (String fieldName : fieldNames) {
             String fieldValue = fields.get(fieldName);
             if (fieldValue != null && !fieldValue.isEmpty()) {
-                sb.append(fieldName);
-                sb.append("=");
-                try {
-                    String encodedValue = java.net.URLEncoder.encode(fieldValue, StandardCharsets.US_ASCII.toString())
-                            .replace("+", "%20");
-                    sb.append(encodedValue);
-                } catch (Exception e) {
-                    sb.append(fieldValue);
-                }
-                if (itr.hasNext()) {
-                    sb.append("&");
-                }
+                joiner.add(fieldName + "=" + fieldValue);
             }
         }
-        return hmacSHA512(secretKey, sb.toString());
+        return hmacSHA512(secretKey, joiner.toString());
     }
+
 }

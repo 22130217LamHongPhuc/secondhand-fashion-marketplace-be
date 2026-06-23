@@ -24,7 +24,9 @@ public class SellerOrderMapper {
     public static OrderListResponse toListResponse(Order order) {
         if (order == null) return null;
 
-        BigDecimal total = order.getSubtotal().add(order.getShippingFee());
+        BigDecimal total = order.getSubtotal()
+            .add(order.getShippingFee())
+            .subtract(order.getDiscountAmount() != null ? order.getDiscountAmount() : BigDecimal.ZERO);
         String customerName = (order.getCustomer() != null) ? order.getCustomer().getFullName() : "Khách hàng";
 
         return new OrderListResponse(
@@ -44,7 +46,9 @@ public class SellerOrderMapper {
     public static OrderDetailResponse toDetailResponse(Order order) {
         if (order == null) return null;
 
-        BigDecimal total = order.getSubtotal().add(order.getShippingFee());
+        BigDecimal total = order.getSubtotal()
+            .add(order.getShippingFee())
+            .subtract(order.getDiscountAmount() != null ? order.getDiscountAmount() : BigDecimal.ZERO);
         String customerName = (order.getCustomer() != null) ? order.getCustomer().getFullName() : "Khách hàng";
 
         ShippingAddressResponse shippingAddressResponse = null;

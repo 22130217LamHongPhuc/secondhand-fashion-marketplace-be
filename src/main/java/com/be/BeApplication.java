@@ -7,12 +7,15 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.core.env.Environment;
 import org.springframework.data.web.config.EnableSpringDataWebSupport;
 
+import org.springframework.scheduling.annotation.EnableScheduling;
+
 import java.util.Arrays;
 
 import static org.springframework.data.web.config.EnableSpringDataWebSupport.PageSerializationMode.VIA_DTO;
 
 @SpringBootApplication
 @EnableSpringDataWebSupport(pageSerializationMode = VIA_DTO)
+@EnableScheduling
 public class BeApplication {
 
     public static void main(String[] args) {

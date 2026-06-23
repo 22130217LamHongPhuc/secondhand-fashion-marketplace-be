@@ -13,6 +13,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import java.time.LocalDateTime;
 import java.util.stream.Collectors;
 
 @RestController
@@ -24,8 +25,12 @@ public class CustomerPromotionController {
 
     @GetMapping("/coupons/available")
     public ResponseEntity<ApiResponse<List<CouponResponse>>> getAvailableCoupons() {
+        LocalDateTime now = LocalDateTime.now();
         List<CouponResponse> coupons = promotionService.getAllCoupons().stream()
-                .filter(Coupon::getIsActive)
+                .filter(coupon -> Boolean.TRUE.equals(coupon.getIsActive()))
+                .filter(coupon -> !now.isBefore(coupon.getStartDate()) && !now.isAfter(coupon.getEndDate()))
+                .filter(coupon -> coupon.getUsageLimit() == null
+                        || (coupon.getUsedCount() == null ? 0 : coupon.getUsedCount()) < coupon.getUsageLimit())
                 .map(CouponResponse::fromEntity)
                 .collect(Collectors.toList());
         return ResponseEntity.ok(ApiResponse.success(coupons, "Available coupons retrieved successfully"));

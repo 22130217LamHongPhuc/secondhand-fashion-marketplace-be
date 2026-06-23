@@ -22,6 +22,8 @@ public class CheckoutRequest {
     @NotNull(message = "Payment method is required")
     private String paymentMethod; // "COD" or "WALLET"
 
+    private String couponCode;
+
     @NotEmpty(message = "Items list cannot be empty")
     private List<CheckoutItem> items;
 }

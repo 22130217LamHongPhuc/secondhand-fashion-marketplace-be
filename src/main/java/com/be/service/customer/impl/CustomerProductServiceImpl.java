@@ -134,7 +134,14 @@ public class CustomerProductServiceImpl implements CustomerProductService {
                         shop.getTotalReviews(),
                         shop.getIsActive(),
                         shop.getIsVerified(),
-                        shop.getCreatedAt()),
+                        shop.getCreatedAt(),
+                        shop.getProvinceId(),
+                        shop.getProvinceName(),
+                        shop.getDistrictId(),
+                        shop.getDistrictName(),
+                        shop.getWardCode(),
+                        shop.getWardName(),
+                        shop.getAddressDetail()),
                 new ShopProductPageResponse(
                         items,
                         productPage.getNumber(),
@@ -185,7 +192,14 @@ public class CustomerProductServiceImpl implements CustomerProductService {
                         shop.getTotalReviews(),
                         shop.getIsActive(),
                         shop.getIsVerified(),
-                        shop.getCreatedAt()))
+                        shop.getCreatedAt(),
+                        shop.getProvinceId(),
+                        shop.getProvinceName(),
+                        shop.getDistrictId(),
+                        shop.getDistrictName(),
+                        shop.getWardCode(),
+                        shop.getWardName(),
+                        shop.getAddressDetail()))
                 .toList();
 
         return new ShopPageResponse(
@@ -219,7 +233,14 @@ public class CustomerProductServiceImpl implements CustomerProductService {
                         shop.getTotalReviews(),
                         shop.getIsActive(),
                         shop.getIsVerified(),
-                        shop.getCreatedAt()))
+                        shop.getCreatedAt(),
+                        shop.getProvinceId(),
+                        shop.getProvinceName(),
+                        shop.getDistrictId(),
+                        shop.getDistrictName(),
+                        shop.getWardCode(),
+                        shop.getWardName(),
+                        shop.getAddressDetail()))
                 .toList();
 
         return new ShopPageResponse(
@@ -499,7 +520,14 @@ public class CustomerProductServiceImpl implements CustomerProductService {
                                 product.getShop().getIsVerified(),
                                 product.getShop().getRatingAvg(),
                                 product.getShop().getTotalReviews(),
-                                product.getShop().getSeller() == null ? null : product.getShop().getSeller().getId()),
+                                product.getShop().getSeller() == null ? null : product.getShop().getSeller().getId(),
+                                product.getShop().getProvinceId(),
+                                product.getShop().getProvinceName(),
+                                product.getShop().getDistrictId(),
+                                product.getShop().getDistrictName(),
+                                product.getShop().getWardCode(),
+                                product.getShop().getWardName(),
+                                product.getShop().getAddressDetail()),
                 mapLatestComments(product.getId()),
                 mapLatestReviews(product.getId()),
                 mapRelatedProducts(product));

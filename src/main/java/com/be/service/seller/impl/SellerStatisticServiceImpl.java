@@ -13,6 +13,12 @@ import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 
+import com.be.repository.UserRepository;
+import com.be.security.JwtTokenProvider;
+import org.springframework.web.context.request.RequestContextHolder;
+import org.springframework.web.context.request.ServletRequestAttributes;
+import jakarta.servlet.http.HttpServletRequest;
+
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.LocalDate;
@@ -29,6 +35,8 @@ import java.util.List;
 public class SellerStatisticServiceImpl implements SellerStatisticService {
     private final SellerStatisticRepository statisticRepository;
     private final ShopRepository shopRepository;
+    private final UserRepository userRepository;
+    private final JwtTokenProvider jwtTokenProvider;
 
     private static final String[] CATEGORY_COLORS = {"#c75c2e", "#d4724a", "#f5c9a8", "#e8e5de", "#4b5563"};
 
@@ -96,11 +104,29 @@ public class SellerStatisticServiceImpl implements SellerStatisticService {
                 .toList();
         long extraOrdersCount = Math.max(0, pendingOrders - avatars.size());
 
-        // Trend - Mock with typical ascending numbers for visualization
-        List<BigDecimal> trend = List.of(
-                BigDecimal.valueOf(35), BigDecimal.valueOf(38), BigDecimal.valueOf(42),
-                BigDecimal.valueOf(48), BigDecimal.valueOf(80), BigDecimal.valueOf(50), BigDecimal.valueOf(55)
-        );
+        // Trend - Calculate dynamically based on daily revenue of the last 7 days
+        List<BigDecimal> trend = new ArrayList<>();
+        BigDecimal maxDailyRevenue = BigDecimal.ZERO;
+        List<BigDecimal> dailyRevenues = new ArrayList<>();
+        for (int i = 6; i >= 0; i--) {
+            LocalDateTime startOfDay = LocalDate.now().minusDays(i).atStartOfDay();
+            LocalDateTime endOfDay = startOfDay.plusDays(1);
+            BigDecimal dayRevenue = statisticRepository.getRevenueByPeriod(resolvedShopId, startOfDay, endOfDay);
+            dailyRevenues.add(dayRevenue);
+            if (dayRevenue.compareTo(maxDailyRevenue) > 0) {
+                maxDailyRevenue = dayRevenue;
+            }
+        }
+        for (BigDecimal dayRevenue : dailyRevenues) {
+            if (maxDailyRevenue.compareTo(BigDecimal.ZERO) > 0) {
+                BigDecimal percent = dayRevenue.multiply(BigDecimal.valueOf(90))
+                        .divide(maxDailyRevenue, 2, RoundingMode.HALF_UP)
+                        .add(BigDecimal.valueOf(10));
+                trend.add(percent);
+            } else {
+                trend.add(BigDecimal.valueOf(10));
+            }
+        }
 
         SellerDashboardResponse.DashboardSummary summary = new SellerDashboardResponse.DashboardSummary(
                 totalRevenue, growth, trend, pendingOrders, avatars, extraOrdersCount, totalProducts, activeProducts, pendingProducts
@@ -254,14 +280,28 @@ public class SellerStatisticServiceImpl implements SellerStatisticService {
     }
 
     private Shop getCurrentSellerShop() {
-//        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
-//        if (authentication == null || !(authentication.getPrincipal() instanceof User user)) {
-//            throw new IllegalStateException("Authenticated seller is required");
-//        }
-//
-//        return shopRepository.findBySellerId(user.getId())
-//                .orElseThrow(() -> new EntityNotFoundException("Shop not found for current seller"));
-        return shopRepository.findBySellerId(1L)
+        User user = null;
+        try {
+            HttpServletRequest request = ((ServletRequestAttributes) RequestContextHolder.currentRequestAttributes()).getRequest();
+            String authHeader = request.getHeader("Authorization");
+            if (authHeader != null && authHeader.startsWith("Bearer ")) {
+                String token = authHeader.substring(7);
+                if (jwtTokenProvider.validateToken(token)) {
+                    String email = jwtTokenProvider.getEmailFromToken(token);
+                    user = userRepository.findByEmail(email).orElse(null);
+                }
+            }
+        } catch (Exception e) {
+            // RequestContext not active or token invalid
+        }
+
+        if (user != null) {
+            final User finalUser = user;
+            return shopRepository.findBySellerId(finalUser.getId())
+                    .orElseThrow(() -> new EntityNotFoundException("Shop not found for user: " + finalUser.getEmail()));
+        }
+
+        return shopRepository.findBySellerId(2L)
                 .orElseThrow(() -> new EntityNotFoundException("Shop not found for current seller"));
     }
 }

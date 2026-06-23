@@ -34,6 +34,8 @@ public class UserResponse {
     private java.math.BigDecimal walletBalance;
 
     public static UserResponse fromEntity(User user) {
+        boolean active = Boolean.TRUE.equals(user.getIsActive());
+
         long calculatedTotalSpent = 0L;
         if (user.getOrders() != null) {
             calculatedTotalSpent = user.getOrders().stream()

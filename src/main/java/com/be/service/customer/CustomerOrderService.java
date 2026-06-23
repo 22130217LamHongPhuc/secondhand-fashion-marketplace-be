@@ -16,4 +16,8 @@ public interface CustomerOrderService {
     OrderDetailResponse cancelOrder(Long customerId, Long orderId, String reason);
 
     CheckoutResponse checkout(CheckoutRequest request);
+
+    void processVNPayPayment(String paymentRef, String responseCode, String vnpAmountStr);
+
+    String regeneratePaymentUrl(Long customerId, Long orderId);
 }
