@@ -66,6 +66,28 @@ public class Shop {
     @Builder.Default
     private Integer warningStrikes = 0;
 
+    // ── GHN Address Fields ───────────────────────────────────────
+    @Column(name = "province_id", nullable = true)
+    private Integer provinceId;
+
+    @Column(name = "province_name", nullable = true, length = 100)
+    private String provinceName;
+
+    @Column(name = "district_id", nullable = true)
+    private Integer districtId;
+
+    @Column(name = "district_name", nullable = true, length = 100)
+    private String districtName;
+
+    @Column(name = "ward_code", nullable = true, length = 20)
+    private String wardCode;
+
+    @Column(name = "ward_name", nullable = true, length = 100)
+    private String wardName;
+
+    @Column(name = "address_detail", columnDefinition = "TEXT", nullable = true)
+    private String addressDetail;
+
     @CreationTimestamp
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;

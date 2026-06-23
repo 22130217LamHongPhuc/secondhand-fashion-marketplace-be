@@ -47,6 +47,16 @@ public class UserAddress {
     @Builder.Default
     private Boolean isDefault = false;
 
+    // ── GHN ID Fields ──────────────────────────────────────────
+    @Column(name = "province_id", nullable = true)
+    private Integer provinceId;
+
+    @Column(name = "district_id", nullable = true)
+    private Integer districtId;
+
+    @Column(name = "ward_code", nullable = true, length = 20)
+    private String wardCode;
+
     @CreationTimestamp
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;

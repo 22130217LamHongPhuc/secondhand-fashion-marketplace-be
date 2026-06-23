@@ -320,7 +320,8 @@ public class PromotionServiceImpl implements PromotionService {
                     .build();
         }
 
-        if (coupon.getUsageLimit() != null && coupon.getUsedCount() >= coupon.getUsageLimit()) {
+        int usedCount = coupon.getUsedCount() == null ? 0 : coupon.getUsedCount();
+        if (coupon.getUsageLimit() != null && usedCount >= coupon.getUsageLimit()) {
             return com.be.dto.response.CouponValidationResponse.builder()
                     .isValid(false)
                     .message("Mã giảm giá đã hết lượt sử dụng")

@@ -14,7 +14,15 @@ public record ShopInfoResponse(
         Integer totalReviews,
         Boolean isActive,
         Boolean isVerified,
-        LocalDateTime createdAt
+        LocalDateTime createdAt,
+        Integer provinceId,
+        String provinceName,
+        Integer districtId,
+        String districtName,
+        String wardCode,
+        String wardName,
+        String addressDetail
 ) {
 }
+
 

@@ -28,7 +28,9 @@ public record OrderHistoryItemResponse(
         LocalDateTime createdAt,
         LocalDateTime updatedAt) {
     public static OrderHistoryItemResponse fromEntity(Order order) {
-        BigDecimal total = order.getSubtotal().add(order.getShippingFee());
+        BigDecimal total = order.getSubtotal()
+                .add(order.getShippingFee())
+                .subtract(order.getDiscountAmount() != null ? order.getDiscountAmount() : BigDecimal.ZERO);
 
         String thumbnailUrl = null;
         String firstProductName = null;

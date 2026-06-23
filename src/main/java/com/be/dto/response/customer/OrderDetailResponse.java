@@ -64,7 +64,9 @@ public record OrderDetailResponse(
     ) {}
 
     public static OrderDetailResponse fromEntity(Order order) {
-        BigDecimal total = order.getSubtotal().add(order.getShippingFee());
+        BigDecimal total = order.getSubtotal()
+                .add(order.getShippingFee())
+                .subtract(order.getDiscountAmount() != null ? order.getDiscountAmount() : BigDecimal.ZERO);
 
         ShopInfo shopInfo = null;
         if (order.getShop() != null) {

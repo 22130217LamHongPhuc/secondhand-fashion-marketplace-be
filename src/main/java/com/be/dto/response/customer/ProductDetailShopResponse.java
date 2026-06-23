@@ -10,9 +10,17 @@ public record ProductDetailShopResponse(
         Boolean isVerified,
         BigDecimal ratingAvg,
         Integer totalReviews,
-        Long sellerId
+        Long sellerId,
+        Integer provinceId,
+        String provinceName,
+        Integer districtId,
+        String districtName,
+        String wardCode,
+        String wardName,
+        String addressDetail
 ) {
 
 }
+
 
 

@@ -114,5 +114,19 @@ public class CustomerOrderController {
         com.be.dto.response.customer.CheckoutResponse result = customerOrderService.checkout(request);
         return ResponseEntity.ok(ApiResponse.success(result, "Đặt hàng thành công"));
     }
+
+    @PostMapping("/{orderId}/repay")
+    public ResponseEntity<ApiResponse<java.util.Map<String, String>>> repay(
+            @PathVariable Long orderId,
+            @RequestParam(required = false) Long customerId,
+            @RequestHeader(value = "Authorization", required = false) String authHeader
+    ) {
+        Long resolvedCustomerId = resolveCustomerId(customerId, authHeader);
+        if (resolvedCustomerId == null) {
+            return ResponseEntity.status(401).body(ApiResponse.success(null, "Yêu cầu đăng nhập để thanh toán lại."));
+        }
+        String paymentUrl = customerOrderService.regeneratePaymentUrl(resolvedCustomerId, orderId);
+        return ResponseEntity.ok(ApiResponse.success(java.util.Map.of("paymentUrl", paymentUrl), "Tạo link thanh toán lại thành công"));
+    }
 }
 

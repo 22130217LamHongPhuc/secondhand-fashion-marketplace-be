@@ -2,9 +2,12 @@ package com.be.service.impl;
 
 import com.be.common.enums.OrderStatus;
 import com.be.entity.Order;
+import com.be.entity.OrderItem;
 import com.be.entity.OrderStatusLog;
+import com.be.entity.Product;
 import com.be.repository.OrderRepository;
 import com.be.repository.OrderStatusLogRepository;
+import com.be.repository.ProductRepository;
 import com.be.service.OrderService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
@@ -20,6 +23,7 @@ public class OrderServiceImpl implements OrderService {
 
     private final OrderRepository orderRepository;
     private final OrderStatusLogRepository orderStatusLogRepository;
+    private final ProductRepository productRepository;
 
     @Override
     @Transactional(readOnly = true)
@@ -51,6 +55,10 @@ public class OrderServiceImpl implements OrderService {
     @Transactional
     public Order updateOrderStatus(Long orderId, OrderStatus status) {
         Order order = getOrderById(orderId);
+        OrderStatus previousStatus = order.getStatus();
+        if (status == OrderStatus.CANCELLED && previousStatus != OrderStatus.CANCELLED) {
+            restoreStock(order);
+        }
         order.setStatus(status);
         
         if (status == OrderStatus.DONE) {
@@ -75,7 +83,9 @@ public class OrderServiceImpl implements OrderService {
         if (order.getStatus() == OrderStatus.DONE || order.getStatus() == OrderStatus.CANCELLED) {
             throw new RuntimeException("Cannot cancel order with status: " + order.getStatus());
         }
-        
+
+        restoreStock(order);
+
         order.setStatus(OrderStatus.CANCELLED);
         order.setCancelReason(reason);
 
@@ -87,5 +97,24 @@ public class OrderServiceImpl implements OrderService {
         orderStatusLogRepository.save(statusLog);
         
         return orderRepository.save(order);
+    }
+
+    private void restoreStock(Order order) {
+        if (order.getItems() == null) {
+            return;
+        }
+
+        for (OrderItem item : order.getItems()) {
+            Product product = item.getProduct();
+            if (product == null || item.getQuantity() == null) {
+                continue;
+            }
+
+            product.setStockQuantity(product.getStockQuantity() + item.getQuantity());
+            if (product.getStockQuantity() > 0) {
+                product.setIsActive(true);
+            }
+            productRepository.save(product);
+        }
     }
 }

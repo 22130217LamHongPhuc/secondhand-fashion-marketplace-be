@@ -2,6 +2,8 @@ package com.be.repository;
 
 import com.be.entity.Order;
 import com.be.common.enums.OrderStatus;
+import com.be.common.enums.PaymentStatus;
+import com.be.common.enums.PaymentMethod;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -17,6 +19,14 @@ import java.util.Optional;
 
 @Repository
 public interface OrderRepository extends JpaRepository<Order, Long> {
+    @Query("SELECT o FROM Order o WHERE o.status = :status AND o.paymentStatus = :paymentStatus AND o.paymentMethod = :paymentMethod AND o.createdAt < :limit")
+    List<Order> findExpiredOrders(
+            @Param("status") OrderStatus status,
+            @Param("paymentStatus") PaymentStatus paymentStatus,
+            @Param("paymentMethod") PaymentMethod paymentMethod,
+            @Param("limit") LocalDateTime limit
+    );
+
     @Query(value = "SELECT o FROM Order o JOIN FETCH o.customer ORDER BY o.id ASC",
            countQuery = "SELECT COUNT(o) FROM Order o")
     Page<Order> getListByPage(Pageable pageable);
@@ -32,6 +42,28 @@ public interface OrderRepository extends JpaRepository<Order, Long> {
     @Query(value = "SELECT o FROM Order o JOIN FETCH o.customer WHERE o.createdAt >= :startAt AND o.createdAt < :endAt ORDER BY o.id ASC",
            countQuery = "SELECT COUNT(o) FROM Order o WHERE o.createdAt >= :startAt AND o.createdAt < :endAt")
     Page<Order> getListByMonth(
+            @Param("startAt") LocalDateTime startAt,
+            @Param("endAt") LocalDateTime endAt,
+            Pageable pageable
+    );
+
+    @Query(value = "SELECT o FROM Order o JOIN FETCH o.customer WHERE o.shop.id = :shopId ORDER BY o.id ASC",
+           countQuery = "SELECT COUNT(o) FROM Order o WHERE o.shop.id = :shopId")
+    Page<Order> getListByShopAndPage(@Param("shopId") Long shopId, Pageable pageable);
+
+    @Query(value = "SELECT o FROM Order o JOIN FETCH o.customer WHERE o.shop.id = :shopId AND (:status IS NULL OR o.status = :status) AND (:orderCode IS NULL OR o.orderCode = :orderCode) ORDER BY o.id ASC",
+           countQuery = "SELECT COUNT(o) FROM Order o WHERE o.shop.id = :shopId AND (:status IS NULL OR o.status = :status) AND (:orderCode IS NULL OR o.orderCode = :orderCode)")
+    Page<Order> getListByShopAndStatusAndOrderCode(
+            @Param("shopId") Long shopId,
+            @Param("status") OrderStatus status,
+            @Param("orderCode") String orderCode,
+            Pageable pageable
+    );
+
+    @Query(value = "SELECT o FROM Order o JOIN FETCH o.customer WHERE o.shop.id = :shopId AND o.createdAt >= :startAt AND o.createdAt < :endAt ORDER BY o.id ASC",
+           countQuery = "SELECT COUNT(o) FROM Order o WHERE o.shop.id = :shopId AND o.createdAt >= :startAt AND o.createdAt < :endAt")
+    Page<Order> getListByShopAndMonth(
+            @Param("shopId") Long shopId,
             @Param("startAt") LocalDateTime startAt,
             @Param("endAt") LocalDateTime endAt,
             Pageable pageable
