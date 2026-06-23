@@ -22,8 +22,7 @@ import com.be.service.customer.CustomerProductService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.access.AccessDeniedException;
-import org.springframework.security.core.Authentication;
-import org.springframework.security.core.context.SecurityContextHolder;
+
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
 import org.springframework.data.jpa.domain.Specification;
@@ -499,7 +498,8 @@ public class CustomerProductServiceImpl implements CustomerProductService {
                                 product.getShop().getIsVerified(),
                                 product.getShop().getRatingAvg(),
                                 product.getShop().getTotalReviews(),
-                                product.getShop().getSeller() == null ? null : product.getShop().getSeller().getId()),
+                        product.getShop().getId()
+                ),
                 mapLatestComments(product.getId()),
                 mapLatestReviews(product.getId()),
                 mapRelatedProducts(product));

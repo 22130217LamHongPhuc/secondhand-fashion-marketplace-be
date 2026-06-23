@@ -21,14 +21,7 @@ import com.be.entity.Wallet;
 import com.be.entity.WalletTransaction;
 import com.be.entity.Role;
 import com.be.entity.UserRoleMapping;
-import com.be.repository.OrderRepository;
-import com.be.repository.UserRepository;
-import com.be.repository.ProductRepository;
-import com.be.repository.UserAddressRepository;
-import com.be.repository.WalletRepository;
-import com.be.repository.WalletTransactionRepository;
-import com.be.repository.RoleRepository;
-import com.be.repository.UserRoleMappingRepository;
+import com.be.repository.*;
 import com.be.service.customer.CustomerOrderService;
 import com.be.service.SseEmitterService;
 import lombok.RequiredArgsConstructor;
@@ -57,6 +50,7 @@ public class CustomerOrderServiceImpl implements CustomerOrderService {
     private final RoleRepository roleRepository;
     private final UserRoleMappingRepository userRoleMappingRepository;
     private final SseEmitterService sseEmitterService;
+    private final OrderStatusLogRepository orderStatusLogRepository;
 
     @Override
     @Transactional(readOnly = true)

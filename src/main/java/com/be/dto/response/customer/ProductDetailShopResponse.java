@@ -12,6 +12,7 @@ public record ProductDetailShopResponse(
         Integer totalReviews,
         Long sellerId
 ) {
+
 }
 
 
