@@ -22,6 +22,7 @@ import com.be.entity.Wallet;
 import com.be.entity.WalletTransaction;
 import com.be.entity.Role;
 import com.be.entity.UserRoleMapping;
+
 import com.be.repository.OrderRepository;
 import com.be.repository.OrderStatusLogRepository;
 import com.be.repository.CouponRepository;
@@ -66,6 +67,7 @@ public class CustomerOrderServiceImpl implements CustomerOrderService {
     private final RoleRepository roleRepository;
     private final UserRoleMappingRepository userRoleMappingRepository;
     private final SseEmitterService sseEmitterService;
+
     private final PromotionService promotionService;
 
     @Value("${ghn.api.base-url:https://dev-online-gateway.ghn.vn/shiip/public-api}")
@@ -76,6 +78,9 @@ public class CustomerOrderServiceImpl implements CustomerOrderService {
 
     @Value("${ghn.api.shop-id:2509459}")
     private String ghnShopId;
+
+    private final OrderStatusLogRepository orderStatusLogRepository;
+
 
     @Override
     @Transactional(readOnly = true)

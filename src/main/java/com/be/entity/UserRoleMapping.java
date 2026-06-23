@@ -20,7 +20,7 @@ import java.time.LocalDateTime;
 @Builder
 public class UserRoleMapping {
     @Id
-    @GeneratedValue(strategy = GenerationType.AUTO)
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
     @ManyToOne(fetch = FetchType.LAZY)

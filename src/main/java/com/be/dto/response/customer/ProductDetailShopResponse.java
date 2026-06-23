@@ -19,6 +19,7 @@ public record ProductDetailShopResponse(
         String wardName,
         String addressDetail
 ) {
+
 }
 
 
