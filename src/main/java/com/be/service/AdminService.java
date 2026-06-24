@@ -11,9 +11,11 @@ import com.be.entity.Complaint;
 import com.be.common.enums.ComplaintStatus;
 import java.util.List;
 
+import com.be.common.enums.UserRole;
+
 public interface AdminService {
     AdminDashboardResponse getDashboardStats();
-    Page<User> getAllUsers(Pageable pageable);
+    Page<User> getAllUsers(UserRole role, String search, Pageable pageable);
     User getUserById(Long userId);
     User updateUserStatus(Long userId, boolean isActive);
     User updateUserRole(Long userId, String role);

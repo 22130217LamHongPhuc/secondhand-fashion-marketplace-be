@@ -54,6 +54,8 @@ public interface ProductRepository extends JpaRepository<Product, Long>, JpaSpec
 
     Page<Product> findByCategoryIdAndIsActiveTrue(Long categoryId, Pageable pageable);
 
+    Page<Product> findByCategoryIdInAndIsActiveTrue(List<Long> categoryIds, Pageable pageable);
+
     Optional<Product> findByIdAndIsActiveTrue(Long id);
 
     @Query(value = "SELECT * FROM products WHERE id = :id FOR UPDATE", nativeQuery = true)

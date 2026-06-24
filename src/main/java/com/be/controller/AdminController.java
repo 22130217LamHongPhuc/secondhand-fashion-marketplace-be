@@ -36,10 +36,20 @@ public class AdminController {
     
     @GetMapping("/users")
     public ResponseEntity<PagedResponse<UserResponse>> getUsers(
+            @RequestParam(required = false) String search,
+            @RequestParam(required = false) String role,
             @RequestParam(defaultValue = "1") int page,
             @RequestParam(defaultValue = "10") int limit) {
         Pageable pageable = PageRequest.of(page > 0 ? page - 1 : 0, limit);
-        Page<UserResponse> users = adminService.getAllUsers(pageable)
+        com.be.common.enums.UserRole userRole = null;
+        if (role != null && !role.isEmpty() && !role.equalsIgnoreCase("all")) {
+            try {
+                userRole = com.be.common.enums.UserRole.valueOf(role.toUpperCase());
+            } catch (IllegalArgumentException e) {
+                // Ignore invalid role
+            }
+        }
+        Page<UserResponse> users = adminService.getAllUsers(userRole, search, pageable)
                 .map(UserResponse::fromEntity);
         return ResponseEntity.ok(PagedResponse.fromPage(users));
     }

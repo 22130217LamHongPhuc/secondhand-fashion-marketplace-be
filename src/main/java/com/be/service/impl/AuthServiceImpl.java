@@ -43,6 +43,25 @@ public class AuthServiceImpl implements AuthService {
     private final JwtTokenProvider jwtTokenProvider;
     private final EmailService emailService;
 
+    // Helper method to get role ID from user
+    private Long getRoleId(User user) {
+        if (user.getUserRoles() != null && !user.getUserRoles().isEmpty() && user.getUserRoles().get(0).getRole() != null) {
+            return user.getUserRoles().get(0).getRole().getId();
+        }
+        return null;
+    }
+
+    // Helper method to get role name from user
+    private String getRoleName(User user) {
+        if (user.getRole() != null) {
+            return user.getRole().name();
+        }
+        if (user.getUserRoles() != null && !user.getUserRoles().isEmpty() && user.getUserRoles().get(0).getRole() != null) {
+            return user.getUserRoles().get(0).getRole().getName().name();
+        }
+        return UserRole.CUSTOMER.name();
+    }
+
     @Override
     @Transactional
     public AuthResponse register(RegisterRequest request) {
@@ -141,7 +160,8 @@ public class AuthServiceImpl implements AuthService {
                 .userId(activatedUser.getId())
                 .email(activatedUser.getEmail())
                 .fullName(activatedUser.getFullName())
-                .role(activatedUser.getRole() != null ? activatedUser.getRole().name() : UserRole.CUSTOMER.name())
+                .role(getRoleName(activatedUser))
+                .roleId(getRoleId(activatedUser))
                 .avatarUrl(activatedUser.getAvatarUrl())
                 .build();
     }
@@ -167,7 +187,8 @@ public class AuthServiceImpl implements AuthService {
                 .userId(user.getId())
                 .email(user.getEmail())
                 .fullName(user.getFullName())
-                .role(user.getRole() != null ? user.getRole().name() : UserRole.CUSTOMER.name())
+                .role(getRoleName(user))
+                .roleId(getRoleId(user))
                 .avatarUrl(user.getAvatarUrl())
                 .build();
     }
