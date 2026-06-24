@@ -26,6 +26,7 @@ public class AdminController {
     private final AdminService adminService;
     private final com.be.service.ProductService productService;
     private final OrderService orderService;
+    private final com.be.repository.UserRepository userRepository;
 
     @GetMapping("/dashboard/statistics")
     public ResponseEntity<AdminDashboardResponse> getStats() {
@@ -94,11 +95,16 @@ public class AdminController {
 
     @GetMapping("/users/statistics")
     public ResponseEntity<Map<String, Object>> getUserStats() {
-        AdminDashboardResponse stats = adminService.getDashboardStats();
+        long totalUsers = userRepository.count();
+        long totalSellers = userRepository.countByRole(com.be.common.enums.UserRole.SELLER);
+        long totalCustomers = userRepository.countByRole(com.be.common.enums.UserRole.CUSTOMER);
+        long activeUsers = userRepository.countByIsActiveTrue();
+        long lockedUsers = totalUsers - activeUsers;
         return ResponseEntity.ok(Map.of(
-                "totalUsers", stats.getTotalUsers(),
-                "newSellers", stats.getTotalSellers(),
-                "lockedUsers", stats.getTotalUsers() - stats.getActiveUsers()
+                "totalUsers", totalUsers,
+                "totalSellers", totalSellers,
+                "totalCustomers", totalCustomers,
+                "lockedUsers", lockedUsers
         ));
     }
 
