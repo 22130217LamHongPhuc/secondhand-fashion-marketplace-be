@@ -132,7 +132,8 @@ public class User implements UserDetails{
                 .toList();
     }
 
-    public UserRole getRole() {
+    // Get primary role from userRoles relationship (for Spring Security)
+    public UserRole getPrimaryRole() {
         if (userRoles == null || userRoles.isEmpty() || userRoles.get(0) == null || userRoles.get(0).getRole() == null) {
             return null;
         }
