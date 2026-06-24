@@ -69,8 +69,8 @@ public class AdminServiceImpl implements AdminService {
     }
 
     @Override
-    public Page<User> getAllUsers(Pageable pageable) {
-        return userRepository.findAll(pageable);
+    public Page<User> getAllUsers(UserRole role, String search, Pageable pageable) {
+        return userRepository.findAllFiltered(role, search, pageable);
     }
 
     @Override
@@ -99,6 +99,7 @@ public class AdminServiceImpl implements AdminService {
         Role targetRole = roleRepository.findByName(userRole)
                 .orElseThrow(() -> new RuntimeException("Role not found: " + userRole));
         
+        user.setRole(userRole);
         if (user.getUserRoles() == null) {
             user.setUserRoles(new java.util.ArrayList<>());
         } else {

@@ -59,6 +59,10 @@ public class User implements UserDetails{
     @Column(name = "email_verified_at", nullable = true)
     private LocalDateTime emailVerifiedAt;
 
+    @Enumerated(EnumType.STRING)
+    @Column(name = "role", nullable = false)
+    private UserRole role;
+
     @CreationTimestamp
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;
@@ -108,6 +112,9 @@ public class User implements UserDetails{
     }
 
     public UserRole getRole() {
+        if (role != null) {
+            return role;
+        }
         if (userRoles == null || userRoles.isEmpty() || userRoles.get(0) == null || userRoles.get(0).getRole() == null) {
             return null;
         }

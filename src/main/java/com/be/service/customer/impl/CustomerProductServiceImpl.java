@@ -72,6 +72,28 @@ public class CustomerProductServiceImpl implements CustomerProductService {
                 .toList();
     }
 
+    private List<Long> expandCategoryIds(List<Long> categoryIds) {
+        if (categoryIds == null || categoryIds.isEmpty()) {
+            return categoryIds;
+        }
+        List<com.be.entity.Category> allCategories = categoryRepository.findAll();
+        java.util.Set<Long> expandedIds = new java.util.HashSet<>(categoryIds);
+        java.util.List<Long> queue = new java.util.ArrayList<>(categoryIds);
+        int head = 0;
+        while (head < queue.size()) {
+            Long currentId = queue.get(head++);
+            for (com.be.entity.Category cat : allCategories) {
+                if (cat.getParent() != null && currentId.equals(cat.getParent().getId())) {
+                    Long childId = cat.getId();
+                    if (expandedIds.add(childId)) {
+                        queue.add(childId);
+                    }
+                }
+            }
+        }
+        return new java.util.ArrayList<>(expandedIds);
+    }
+
     @Override
     public List<ProductCardResponse> getHotDeals(int limit) {
         return productRepository.findHotDeals(PageRequest.of(0, limit)).stream()
@@ -152,7 +174,8 @@ public class CustomerProductServiceImpl implements CustomerProductService {
         }
 
         var pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "createdAt", "id"));
-        var productPage = productRepository.findByCategoryIdAndIsActiveTrue(categoryId, pageable);
+        List<Long> allCategoryIds = expandCategoryIds(List.of(categoryId));
+        var productPage = productRepository.findByCategoryIdInAndIsActiveTrue(allCategoryIds, pageable);
 
         var items = productPage.getContent().stream()
                 .map(this::toProductCard)
@@ -380,7 +403,8 @@ public class CustomerProductServiceImpl implements CustomerProductService {
     private Specification<Product> categoriesIn(List<Long> categoryIds) {
         if (categoryIds == null || categoryIds.isEmpty())
             return null;
-        return (root, query, cb) -> root.get("category").get("id").in(categoryIds);
+        List<Long> allIds = expandCategoryIds(categoryIds);
+        return (root, query, cb) -> root.get("category").get("id").in(allIds);
     }
 
     private Specification<Product> conditionEquals(String condition) {

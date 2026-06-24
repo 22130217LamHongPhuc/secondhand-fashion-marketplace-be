@@ -362,6 +362,7 @@ public class SellerSeeder implements CommandLineRunner {
                         .authProvider(AuthProvider.EMAIL)
                         .isActive(true)
                         .emailVerifiedAt(LocalDateTime.now())
+                        .role(UserRole.SELLER)
                         .build()));
 
         assignRole(seller, UserRole.SELLER);
@@ -378,6 +379,7 @@ public class SellerSeeder implements CommandLineRunner {
                         .authProvider(AuthProvider.EMAIL)
                         .isActive(true)
                         .emailVerifiedAt(LocalDateTime.now())
+                        .role(UserRole.CUSTOMER)
                         .build()));
 
         assignRole(customer, UserRole.CUSTOMER);
