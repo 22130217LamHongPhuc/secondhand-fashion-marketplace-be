@@ -1,6 +1,7 @@
 package com.be.service.impl;
 
 import com.be.common.enums.OrderStatus;
+import com.be.common.enums.PaymentStatus;
 import com.be.entity.Order;
 import com.be.entity.OrderItem;
 import com.be.entity.OrderStatusLog;
@@ -80,7 +81,7 @@ public class OrderServiceImpl implements OrderService {
     public Order cancelOrder(Long orderId, String reason) {
         Order order = getOrderById(orderId);
         
-        if (order.getStatus() == OrderStatus.DONE || order.getStatus() == OrderStatus.CANCELLED) {
+        if (order.getStatus() == OrderStatus.CANCELLED) {
             throw new RuntimeException("Cannot cancel order with status: " + order.getStatus());
         }
 
@@ -88,6 +89,9 @@ public class OrderServiceImpl implements OrderService {
 
         order.setStatus(OrderStatus.CANCELLED);
         order.setCancelReason(reason);
+        if (order.getPaymentStatus() == PaymentStatus.PAID) {
+            order.setPaymentStatus(PaymentStatus.REFUNDED);
+        }
 
         OrderStatusLog statusLog = OrderStatusLog.builder()
                 .order(order)

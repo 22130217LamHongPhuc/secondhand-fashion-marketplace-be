@@ -42,6 +42,7 @@ public class AdminServiceImpl implements AdminService {
     private final ShopRepository shopRepository;
     private final ComplaintRepository complaintRepository;
     private final RoleRepository roleRepository;
+    private final com.be.service.SseEmitterService sseEmitterService;
 
     @Override
     public AdminDashboardResponse getDashboardStats() {
@@ -215,8 +216,80 @@ public class AdminServiceImpl implements AdminService {
 
     // ============ COMPLAINT MANAGEMENT ============
     @Override
+    @Transactional
     public List<Complaint> getAllComplaints() {
-        return complaintRepository.findAll();
+        List<Complaint> list = complaintRepository.findAll();
+        if (list.isEmpty()) {
+            User customer = userRepository.findAll().stream()
+                    .filter(u -> u.getFullName().toLowerCase().contains("customer") || u.getEmail().contains("customer"))
+                    .findFirst()
+                    .orElse(userRepository.findAll().stream().findFirst().orElse(null));
+            Shop shop = shopRepository.findAll().stream().findFirst().orElse(null);
+            if (customer != null && shop != null) {
+                com.be.entity.Order orderDone = orderRepository.findAll().stream()
+                        .filter(o -> o.getStatus() == OrderStatus.DONE)
+                        .findFirst()
+                        .orElse(null);
+                com.be.entity.Order orderShipping = orderRepository.findAll().stream()
+                        .filter(o -> o.getStatus() == OrderStatus.SHIPPING)
+                        .findFirst()
+                        .orElse(null);
+                com.be.entity.Order orderConfirmed = orderRepository.findAll().stream()
+                        .filter(o -> o.getStatus() == OrderStatus.CONFIRMED)
+                        .findFirst()
+                        .orElse(null);
+
+                List<Complaint> complaints = List.of(
+                        Complaint.builder()
+                                .reporter(orderDone != null && orderDone.getCustomer() != null ? orderDone.getCustomer() : customer)
+                                .reportedShop(orderDone != null && orderDone.getShop() != null ? orderDone.getShop() : shop)
+                                .order(orderDone)
+                                .type(com.be.common.enums.ComplaintType.SHOP_COMPLAINT)
+                                .title("Sản phẩm rách nát, khác với hình ảnh mô tả")
+                                .content("Tôi mua áo blazer linen với giá 410.000đ nhưng nhận về áo bị rách tay rất to và bẩn. Shop từ chối giải quyết hoàn trả hàng. Đề nghị ban quản trị can thiệp!")
+                                .status(com.be.common.enums.ComplaintStatus.PENDING)
+                                .severity(com.be.common.enums.ComplaintSeverity.HIGH)
+                                .build(),
+
+                        Complaint.builder()
+                                .reporter(orderShipping != null && orderShipping.getCustomer() != null ? orderShipping.getCustomer() : customer)
+                                .reportedShop(orderShipping != null && orderShipping.getShop() != null ? orderShipping.getShop() : shop)
+                                .order(orderShipping)
+                                .type(com.be.common.enums.ComplaintType.SHOP_COMPLAINT)
+                                .title("Shop không chịu gửi hàng dù đơn hàng đã thanh toán")
+                                .content("Tôi đã thanh toán qua thẻ ngân hàng từ 3 ngày trước, đơn hàng báo đang giao nhưng tôi liên hệ shop hỏi mã vận đơn thì không trả lời tin nhắn.")
+                                .status(com.be.common.enums.ComplaintStatus.PENDING)
+                                .severity(com.be.common.enums.ComplaintSeverity.MEDIUM)
+                                .build(),
+
+                        Complaint.builder()
+                                .reporter(orderConfirmed != null && orderConfirmed.getCustomer() != null ? orderConfirmed.getCustomer() : customer)
+                                .reportedShop(orderConfirmed != null && orderConfirmed.getShop() != null ? orderConfirmed.getShop() : shop)
+                                .order(orderConfirmed)
+                                .type(com.be.common.enums.ComplaintType.SHOP_COMPLAINT)
+                                .title("Shop giao hàng nhái, nghi ngờ hàng giả thương hiệu")
+                                .content("Tôi đặt mua sản phẩm được ghi là chính hãng vintage Chanel nhưng khi nhận hàng da rất khét mùi nhựa, logo bị lệch và bong tróc. Shop từ chối hoàn trả tiền.")
+                                .status(com.be.common.enums.ComplaintStatus.PENDING)
+                                .severity(com.be.common.enums.ComplaintSeverity.HIGH)
+                                .build(),
+
+                        Complaint.builder()
+                                .reporter(orderDone != null && orderDone.getCustomer() != null ? orderDone.getCustomer() : customer)
+                                .reportedShop(orderDone != null && orderDone.getShop() != null ? orderDone.getShop() : shop)
+                                .order(orderDone)
+                                .type(com.be.common.enums.ComplaintType.SHOP_COMPLAINT)
+                                .title("Yêu cầu hoàn trả hàng do giao chậm trễ")
+                                .content("Tôi đặt mua sản phẩm để đi tiệc nhưng shop chuẩn bị hàng quá lâu dẫn đến đơn vị vận chuyển giao trễ 2 ngày. Tôi không còn nhu cầu sử dụng nữa nên muốn hoàn tiền.")
+                                .status(com.be.common.enums.ComplaintStatus.REJECTED)
+                                .severity(com.be.common.enums.ComplaintSeverity.MEDIUM)
+                                .resolution("Từ chối khiếu nại. Qua xác minh hệ thống, đơn hàng vẫn được giao thành công trong vòng 3 ngày làm việc (đúng cam kết thời gian vận chuyển). Việc trễ hẹn cá nhân không thuộc chính sách hoàn trả hàng.")
+                                .build()
+                );
+                complaintRepository.saveAll(complaints);
+                list = complaintRepository.findAll();
+            }
+        }
+        return list;
     }
 
     @Override
@@ -228,6 +301,28 @@ public class AdminServiceImpl implements AdminService {
         if (resolution != null) {
             complaint.setResolution(resolution);
         }
-        return complaintRepository.save(complaint);
+        Complaint saved = complaintRepository.save(complaint);
+        
+        if (saved.getReporter() != null) {
+            try {
+                java.util.Map<String, Object> eventData = new java.util.HashMap<>();
+                eventData.put("complaintId", saved.getId());
+                eventData.put("status", saved.getStatus().name());
+                eventData.put("resolution", saved.getResolution());
+                eventData.put("title", saved.getTitle() != null ? saved.getTitle() : "Khiếu nại sản phẩm/đơn hàng");
+                eventData.put("updatedAt", java.time.LocalDateTime.now().toString());
+                
+                sseEmitterService.sendEvent(
+                    "customer-notifications", 
+                    saved.getReporter().getId().toString(), 
+                    "complaint-processed", 
+                    eventData
+                );
+            } catch (Exception e) {
+                // Ignore SSE broadcast failure to not fail the update transaction
+            }
+        }
+        
+        return saved;
     }
 }

@@ -177,7 +177,11 @@ public class AuthServiceImpl implements AuthService {
         }
 
         if (Boolean.FALSE.equals(user.getIsActive())) {
-            throw new IllegalArgumentException("Tài khoản của bạn chưa được kích hoạt. Vui lòng xác thực email.");
+            if (user.getEmailVerifiedAt() == null) {
+                throw new IllegalArgumentException("Tài khoản của bạn chưa được kích hoạt. Vui lòng xác thực email.");
+            } else {
+                throw new IllegalArgumentException("Tài khoản của bạn đã bị khóa. Vui lòng liên hệ quản trị viên.");
+            }
         }
 
         String token = jwtTokenProvider.generateToken(user.getEmail());
@@ -267,8 +271,12 @@ public class AuthServiceImpl implements AuthService {
 
         if (userOpt.isPresent()) {
             user = userOpt.get();
+            // If user was locked/disabled by admin, don't let them login
+            if (Boolean.FALSE.equals(user.getIsActive()) && user.getEmailVerifiedAt() != null) {
+                throw new IllegalArgumentException("Tài khoản của bạn đã bị khóa. Vui lòng liên hệ quản trị viên.");
+            }
             // If user exists but is inactive, activate them
-            if (Boolean.FALSE.equals(user.getIsActive())) {
+            if (Boolean.FALSE.equals(user.getIsActive()) && user.getEmailVerifiedAt() == null) {
                 user.setIsActive(true);
                 user.setEmailVerifiedAt(LocalDateTime.now());
             }
