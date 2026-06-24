@@ -79,8 +79,6 @@ public class CustomerOrderServiceImpl implements CustomerOrderService {
     @Value("${ghn.api.shop-id:2509459}")
     private String ghnShopId;
 
-    private final OrderStatusLogRepository orderStatusLogRepository;
-
 
     @Override
     @Transactional(readOnly = true)
