@@ -110,6 +110,9 @@ public class AdminServiceImpl implements AdminService {
                 .user(user)
                 .role(targetRole)
                 .build());
+        
+        user.setRole(userRole);
+                
         return userRepository.save(user);
     }
 

@@ -31,8 +31,11 @@ public class UserResponse {
     private LocalDateTime emailVerifiedAt;
     private Integer totalOrders;
     private Long totalSpent;
+    private java.math.BigDecimal walletBalance;
 
     public static UserResponse fromEntity(User user) {
+        boolean active = Boolean.TRUE.equals(user.getIsActive());
+
         long calculatedTotalSpent = 0L;
         if (user.getOrders() != null) {
             calculatedTotalSpent = user.getOrders().stream()
@@ -45,7 +48,10 @@ public class UserResponse {
                     .sum();
         }
 
-        boolean active = Boolean.TRUE.equals(user.getIsActive());
+        java.math.BigDecimal walletBal = java.math.BigDecimal.ZERO;
+        if (user.getWallet() != null) {
+            walletBal = user.getWallet().getBalance();
+        }
 
         return UserResponse.builder()
                 .id(user.getId())
@@ -56,14 +62,15 @@ public class UserResponse {
                 .avatar(user.getAvatarUrl())
                 .avatarUrl(user.getAvatarUrl())
                 .role(user.getRole())
-                .status(active ? "active" : "banned")
-                .isActive(active)
+                .status(user.getIsActive() ? "active" : "banned")
+                .isActive(user.getIsActive())
                 .authProvider(user.getAuthProvider())
                 .createdAt(user.getCreatedAt())
                 .updatedAt(user.getUpdatedAt())
                 .emailVerifiedAt(user.getEmailVerifiedAt())
                 .totalOrders(user.getOrders() != null ? user.getOrders().size() : 0)
                 .totalSpent(calculatedTotalSpent)
+                .walletBalance(walletBal)
                 .build();
     }
 }

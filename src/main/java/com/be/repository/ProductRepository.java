@@ -27,6 +27,20 @@ public interface ProductRepository extends JpaRepository<Product, Long>, JpaSpec
             Pageable pageable
     );
 
+    @Query("""
+            SELECT p FROM Product p
+            WHERE p.shop.id = :shopId
+              AND (:keyword IS NULL OR LOWER(p.name) LIKE LOWER(CONCAT('%', :keyword, '%')))
+              AND (:isActive IS NULL OR p.isActive = :isActive)
+            ORDER BY p.createdAt DESC
+            """)
+    Page<Product> searchShopProducts(
+            @Param("shopId") Long shopId,
+            @Param("keyword") String keyword,
+            @Param("isActive") Boolean isActive,
+            Pageable pageable
+    );
+
     @Query("SELECT DISTINCT p FROM Product p LEFT JOIN FETCH p.category LEFT JOIN FETCH p.shop LEFT JOIN FETCH p.images ORDER BY p.id DESC")
     List<Product> findAllWithDetails();
 
@@ -44,13 +58,14 @@ public interface ProductRepository extends JpaRepository<Product, Long>, JpaSpec
 
     Optional<Product> findByIdAndIsActiveTrue(Long id);
 
+    @Query(value = "SELECT * FROM products WHERE id = :id FOR UPDATE", nativeQuery = true)
+    Optional<Product> findByIdForUpdate(@Param("id") Long id);
+
     List<Product> findTop8ByCategoryIdAndIsActiveTrueAndIdNotOrderByCreatedAtDesc(Long categoryId, Long id);
 
     Page<Product> findByConditionAndIsActiveTrue(ProductCondition condition, Pageable pageable);
 
     Page<Product> findByIsActiveTrueAndStockQuantityGreaterThan(int stock, Pageable pageable);
-
-
 
     @Query("""
             SELECT p

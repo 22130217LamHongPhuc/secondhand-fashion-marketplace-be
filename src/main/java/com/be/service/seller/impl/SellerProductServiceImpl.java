@@ -20,6 +20,11 @@ import com.be.entity.User;
 import com.be.repository.CategoryRepository;
 import com.be.repository.ProductRepository;
 import com.be.repository.ShopRepository;
+import com.be.repository.UserRepository;
+import com.be.security.JwtTokenProvider;
+import org.springframework.web.context.request.RequestContextHolder;
+import org.springframework.web.context.request.ServletRequestAttributes;
+import jakarta.servlet.http.HttpServletRequest;
 import com.be.service.ImageUploadExecutorService;
 import com.be.service.seller.SellerProductService;
 import com.be.utils.KeyGeneratorUtil;
@@ -53,13 +58,16 @@ public class SellerProductServiceImpl implements SellerProductService {
     private final ProductRepository productRepository;
     private final CategoryRepository categoryRepository;
     private final ShopRepository shopRepository;
+    private final UserRepository userRepository;
+    private final JwtTokenProvider jwtTokenProvider;
 
     @Value("${cloudflare.r2.domain}")
     private String cloudflareDomain;
 
     @Override
     public Page<ProductListResponse> searchProducts(String keyword, Boolean isActive, int page) {
-        Page<Product> productPage = productRepository.searchProducts(keyword, isActive, PageRequest.of(page, Constant.PRODUCT_SIZE));
+        Shop shop = getCurrentSellerShop();
+        Page<Product> productPage = productRepository.searchShopProducts(shop.getId(), keyword, isActive, PageRequest.of(page, Constant.PRODUCT_SIZE));
         List<Long> ids = productPage.getContent().stream().map(Product::getId).toList();
         List<Product> productsWithImages = productRepository.findAllWithImagesByIds(ids);
         java.util.Map<Long, Product> productMap = productsWithImages.stream()
@@ -190,14 +198,28 @@ public class SellerProductServiceImpl implements SellerProductService {
 
 
     private Shop getCurrentSellerShop() {
-//        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
-//        if (authentication == null || !(authentication.getPrincipal() instanceof User user)) {
-//            throw new IllegalStateException("Authenticated seller is required");
-//        }
-//
-//        return shopRepository.findBySellerId(user.getId())
-//                .orElseThrow(() -> new EntityNotFoundException("Shop not found for current seller"));
-        return shopRepository.findBySellerId(1L)
+        User user = null;
+        try {
+            HttpServletRequest request = ((ServletRequestAttributes) RequestContextHolder.currentRequestAttributes()).getRequest();
+            String authHeader = request.getHeader("Authorization");
+            if (authHeader != null && authHeader.startsWith("Bearer ")) {
+                String token = authHeader.substring(7);
+                if (jwtTokenProvider.validateToken(token)) {
+                    String email = jwtTokenProvider.getEmailFromToken(token);
+                    user = userRepository.findByEmail(email).orElse(null);
+                }
+            }
+        } catch (Exception e) {
+            // RequestContext not active or token invalid
+        }
+
+        if (user != null) {
+            final User finalUser = user;
+            return shopRepository.findBySellerId(finalUser.getId())
+                    .orElseThrow(() -> new EntityNotFoundException("Shop not found for user: " + finalUser.getEmail()));
+        }
+
+        return shopRepository.findBySellerId(2L)
                 .orElseThrow(() -> new EntityNotFoundException("Shop not found for current seller"));
     }
 

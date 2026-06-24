@@ -79,6 +79,27 @@ public class Product {
     @Builder.Default
     private Boolean isActive = true;
 
+    // ── GHN Shipping Dimensions ───────────────────────────────────
+    /** Khối lượng (gram) – mặc định 500g cho đồ thời trang secondhand */
+    @Column(name = "weight", nullable = false)
+    @Builder.Default
+    private Integer weight = 500;
+
+    /** Chiều dài (cm) – mặc định 20cm */
+    @Column(name = "length", nullable = false)
+    @Builder.Default
+    private Integer length = 20;
+
+    /** Chiều rộng (cm) – mặc định 15cm */
+    @Column(name = "width", nullable = false)
+    @Builder.Default
+    private Integer width = 15;
+
+    /** Chiều cao (cm) – mặc định 5cm */
+    @Column(name = "height", nullable = false)
+    @Builder.Default
+    private Integer height = 5;
+
     @CreationTimestamp
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;

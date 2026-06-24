@@ -10,7 +10,13 @@ import com.be.dto.response.CouponResponse;
 import com.be.entity.CampaignProduct;
 import com.be.entity.Coupon;
 import com.be.entity.Shop;
+import com.be.entity.User;
 import com.be.repository.ShopRepository;
+import com.be.repository.UserRepository;
+import com.be.security.JwtTokenProvider;
+import org.springframework.web.context.request.RequestContextHolder;
+import org.springframework.web.context.request.ServletRequestAttributes;
+import jakarta.servlet.http.HttpServletRequest;
 import com.be.service.PromotionService;
 import jakarta.persistence.EntityNotFoundException;
 import jakarta.validation.Valid;
@@ -28,10 +34,32 @@ public class SellerPromotionController {
 
     private final PromotionService promotionService;
     private final ShopRepository shopRepository;
+    private final UserRepository userRepository;
+    private final JwtTokenProvider jwtTokenProvider;
 
     private Shop getCurrentSellerShop() {
-        // Mocking behavior identical to SellerProductServiceImpl for consistent testing
-        return shopRepository.findBySellerId(1L)
+        User user = null;
+        try {
+            HttpServletRequest request = ((ServletRequestAttributes) RequestContextHolder.currentRequestAttributes()).getRequest();
+            String authHeader = request.getHeader("Authorization");
+            if (authHeader != null && authHeader.startsWith("Bearer ")) {
+                String token = authHeader.substring(7);
+                if (jwtTokenProvider.validateToken(token)) {
+                    String email = jwtTokenProvider.getEmailFromToken(token);
+                    user = userRepository.findByEmail(email).orElse(null);
+                }
+            }
+        } catch (Exception e) {
+            // RequestContext not active or token invalid
+        }
+
+        if (user != null) {
+            final User finalUser = user;
+            return shopRepository.findBySellerId(finalUser.getId())
+                    .orElseThrow(() -> new EntityNotFoundException("Shop not found for user: " + finalUser.getEmail()));
+        }
+
+        return shopRepository.findBySellerId(2L)
                 .orElseThrow(() -> new EntityNotFoundException("Shop not found for current seller"));
     }
 
@@ -101,6 +129,18 @@ public class SellerPromotionController {
         
         CampaignProduct cp = promotionService.registerProductForCampaign(campaignId, request);
         return ResponseEntity.ok(ApiResponse.success(CampaignProductResponse.fromEntity(cp), "Product registered for campaign successfully"));
+    }
+
+    @GetMapping("/campaigns/{campaignId}/products")
+    public ResponseEntity<ApiResponse<List<CampaignProductResponse>>> getCampaignProducts(
+            @PathVariable Long campaignId
+    ) {
+        Shop shop = getCurrentSellerShop();
+        List<CampaignProductResponse> products = promotionService.getCampaignProducts(campaignId).stream()
+                .filter(cp -> cp.getProduct() != null && cp.getProduct().getShop() != null && cp.getProduct().getShop().getId().equals(shop.getId()))
+                .map(CampaignProductResponse::fromEntity)
+                .collect(Collectors.toList());
+        return ResponseEntity.ok(ApiResponse.success(products, "Get campaign products for shop successfully"));
     }
 
     @DeleteMapping("/campaigns/{campaignId}/products/{productId}")

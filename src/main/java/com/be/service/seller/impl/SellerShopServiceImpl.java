@@ -22,6 +22,11 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
 
+import com.be.security.JwtTokenProvider;
+import org.springframework.web.context.request.RequestContextHolder;
+import org.springframework.web.context.request.ServletRequestAttributes;
+import jakarta.servlet.http.HttpServletRequest;
+
 import java.util.Objects;
 import java.util.UUID;
 
@@ -33,6 +38,7 @@ public class SellerShopServiceImpl implements SellerShopService {
     private final ShopRepository shopRepository;
     private final ImageStoreService imageStoreService;
     private final UserRepository userRepository;
+    private final JwtTokenProvider jwtTokenProvider;
     @Override
     @Transactional(readOnly = true)
     public ShopProfileResponse getMyShop() {
@@ -43,8 +49,7 @@ public class SellerShopServiceImpl implements SellerShopService {
     @Override
     @Transactional
     public ShopProfileResponse createShop(ShopCreateRequest request) {
-//        User user = getCurrentUser();
-        User user = userRepository.findUserById(1L);
+        User user = getCurrentUser();
         // 1. Kiểm tra user chưa có shop
         if (shopRepository.existsBySellerId(user.getId())) {
             throw new IllegalStateException("Cửa hàng đã tồn tại cho tài khoản này.");
@@ -108,16 +113,47 @@ public class SellerShopServiceImpl implements SellerShopService {
     }
 
     private User getCurrentUser() {
-        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
-        if (authentication == null || !(authentication.getPrincipal() instanceof User user)) {
-            throw new IllegalStateException("Yêu cầu xác thực tài khoản bán hàng.");
+        try {
+            HttpServletRequest request = ((ServletRequestAttributes) RequestContextHolder.currentRequestAttributes()).getRequest();
+            String authHeader = request.getHeader("Authorization");
+            if (authHeader != null && authHeader.startsWith("Bearer ")) {
+                String token = authHeader.substring(7);
+                if (jwtTokenProvider.validateToken(token)) {
+                    String email = jwtTokenProvider.getEmailFromToken(token);
+                    User user = userRepository.findByEmail(email).orElse(null);
+                    if (user != null) {
+                        return user;
+                    }
+                }
+            }
+        } catch (Exception e) {
+            // RequestContext not active or token invalid
         }
-        return user;
+        return userRepository.findUserById(2L);
     }
 
     private Shop getCurrentSellerShop() {
-//        User user = getCurrentUser();
-        return shopRepository.findBySellerId(1L)
+        User user = null;
+        try {
+            HttpServletRequest request = ((ServletRequestAttributes) RequestContextHolder.currentRequestAttributes()).getRequest();
+            String authHeader = request.getHeader("Authorization");
+            if (authHeader != null && authHeader.startsWith("Bearer ")) {
+                String token = authHeader.substring(7);
+                if (jwtTokenProvider.validateToken(token)) {
+                    String email = jwtTokenProvider.getEmailFromToken(token);
+                    user = userRepository.findByEmail(email).orElse(null);
+                }
+            }
+        } catch (Exception e) {
+            // RequestContext not active or token invalid
+        }
+
+        if (user != null) {
+            return shopRepository.findBySellerId(user.getId())
+                    .orElseThrow(() -> new EntityNotFoundException("Không tìm thấy thông tin cửa hàng cho tài khoản này."));
+        }
+
+        return shopRepository.findBySellerId(2L)
                 .orElseThrow(() -> new EntityNotFoundException("Không tìm thấy thông tin cửa hàng cho tài khoản này."));
     }
 

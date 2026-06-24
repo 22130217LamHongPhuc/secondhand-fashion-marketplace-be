@@ -9,8 +9,18 @@ public record ProductDetailShopResponse(
         String avatarUrl,
         Boolean isVerified,
         BigDecimal ratingAvg,
-        Integer totalReviews
+        Integer totalReviews,
+        Long sellerId,
+        Integer provinceId,
+        String provinceName,
+        Integer districtId,
+        String districtName,
+        String wardCode,
+        String wardName,
+        String addressDetail
 ) {
+
 }
+
 
 
