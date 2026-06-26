@@ -19,6 +19,7 @@ import com.be.repository.*;
 import jakarta.persistence.EntityNotFoundException;
 import com.be.service.ImageUploadExecutorService;
 import com.be.service.customer.CustomerProductService;
+import com.be.security.JwtTokenProvider;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.access.AccessDeniedException;
@@ -57,6 +58,7 @@ public class CustomerProductServiceImpl implements CustomerProductService {
     private final ShopRepository shopRepository;
     private final CommentRepository commentRepository;
     private final UserRepository userRepository;
+    private final JwtTokenProvider jwtTokenProvider;
     private final ImageUploadExecutorService imageUploadExecutorService;
 
     @Override
@@ -508,11 +510,12 @@ public class CustomerProductServiceImpl implements CustomerProductService {
 
     private ProductDetailResponse toProductDetail(Product product) {
         BigDecimal discountAmount = getDiscountAmount(product.getBasePrice(), product.getSalePrice());
+        ParsedDescription parsedDesc = parseDescription(product.getDescription());
 
         return new ProductDetailResponse(
                 product.getId(),
                 product.getName(),
-                product.getDescription(),
+                parsedDesc.cleanDescription,
                 product.getBrand(),
                 product.getOriginCountry(),
                 product.getCondition() == null ? null : product.getCondition().name(),
@@ -553,7 +556,8 @@ public class CustomerProductServiceImpl implements CustomerProductService {
                                 product.getShop().getAddressDetail()),
                 mapLatestComments(product.getId()),
                 mapLatestReviews(product.getId()),
-                mapRelatedProducts(product));
+                mapRelatedProducts(product),
+                parsedDesc.metadata);
     }
 
     private List<ProductDetailCommentResponse> mapLatestComments(Long productId) {
@@ -700,29 +704,26 @@ public class CustomerProductServiceImpl implements CustomerProductService {
     }
 
     private User getAuthenticatedUser() {
+        try {
+            jakarta.servlet.http.HttpServletRequest request = ((org.springframework.web.context.request.ServletRequestAttributes) org.springframework.web.context.request.RequestContextHolder
+                    .currentRequestAttributes()).getRequest();
+            String authHeader = request.getHeader("Authorization");
+            if (authHeader != null && authHeader.startsWith("Bearer ")) {
+                String token = authHeader.substring(7);
+                if (jwtTokenProvider.validateToken(token)) {
+                    String email = jwtTokenProvider.getEmailFromToken(token);
+                    User user = userRepository.findByEmail(email).orElse(null);
+                    if (user != null) {
+                        return user;
+                    }
+                }
+            }
+        } catch (Exception e) {
+            throw new RuntimeException("Invalid token", e);
+        }
 
         return userRepository.findById(501L)
                 .orElseThrow(() -> new AccessDeniedException("Authenticated customer is required"));
-        // Authentication authentication =
-        // SecurityContextHolder.getContext().getAuthentication();
-        // if (authentication == null || !(authentication.getPrincipal() instanceof User
-        // user)) {
-        // throw new AccessDeniedException("Authenticated customer is required");
-        // }
-        //
-        // if (user.getId() == null) {
-        // throw new AccessDeniedException("Authenticated customer is required");
-        // }
-        //
-        // boolean isCustomer = user.getUserRoles().stream()
-        // .anyMatch(mapping -> mapping.getRole() != null && mapping.getRole().getName()
-        // == UserRole.CUSTOMER);
-        // if (!isCustomer) {
-        // throw new AccessDeniedException("Only customer can review products");
-        // }
-        //
-        // return user;
-
     }
 
     private void validateReviewOwnership(User currentUser, Order order, Long productId) {
@@ -816,5 +817,62 @@ public class CustomerProductServiceImpl implements CustomerProductService {
                 comment.getParent() == null ? null : comment.getParent().getId(),
                 comment.getCreatedAt(),
                 comment.getUpdatedAt());
+    }
+
+    private static final List<String> METADATA_KEYS = List.of(
+            "source:", "external_id:", "source_url:", "size:",
+            "location:", "sub_category:", "posted_at:", "raw_condition:", "status:"
+    );
+
+    private static class ParsedDescription {
+        String cleanDescription;
+        java.util.Map<String, String> metadata;
+
+        ParsedDescription(String cleanDescription, java.util.Map<String, String> metadata) {
+            this.cleanDescription = cleanDescription;
+            this.metadata = metadata;
+        }
+    }
+
+    private ParsedDescription parseDescription(String rawDescription) {
+        if (rawDescription == null) {
+            return new ParsedDescription("", java.util.Collections.emptyMap());
+        }
+
+        String[] lines = rawDescription.split("\\r?\\n");
+        StringBuilder cleanDescBuilder = new StringBuilder();
+        java.util.Map<String, String> metadata = new java.util.LinkedHashMap<>();
+        boolean isMetadataStarted = false;
+
+        for (String line : lines) {
+            String trimmedLine = line.trim();
+            if (!isMetadataStarted) {
+                boolean startsWithMetadataKey = false;
+                for (String key : METADATA_KEYS) {
+                    if (trimmedLine.toLowerCase().startsWith(key)) {
+                        startsWithMetadataKey = true;
+                        break;
+                    }
+                }
+
+                if (startsWithMetadataKey) {
+                    isMetadataStarted = true;
+                }
+            }
+
+            if (isMetadataStarted) {
+                if (trimmedLine.contains(":")) {
+                    int colonIndex = trimmedLine.indexOf(":");
+                    String key = trimmedLine.substring(0, colonIndex).trim();
+                    String value = trimmedLine.substring(colonIndex + 1).trim();
+                    metadata.put(key, value);
+                }
+            } else {
+                cleanDescBuilder.append(line).append("\n");
+            }
+        }
+
+        String cleanDesc = cleanDescBuilder.toString().trim();
+        return new ParsedDescription(cleanDesc, metadata);
     }
 }

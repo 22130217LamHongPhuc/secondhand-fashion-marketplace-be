@@ -3,6 +3,7 @@ package com.be.dto.response.customer;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Map;
 
 public record ProductDetailResponse(
         Long id,
@@ -28,7 +29,8 @@ public record ProductDetailResponse(
         ProductDetailShopResponse shop,
         List<ProductDetailCommentResponse> latestComments,
         List<ProductDetailReviewResponse> latestReviews,
-        List<ProductCardResponse> relatedProducts
+        List<ProductCardResponse> relatedProducts,
+        Map<String, String> metadata
 ) {
 }
 
