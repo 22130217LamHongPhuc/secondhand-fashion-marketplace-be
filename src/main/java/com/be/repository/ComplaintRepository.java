@@ -7,10 +7,14 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 
 import java.util.List;
+import java.util.Optional;
 
 @Repository
 public interface ComplaintRepository extends JpaRepository<Complaint, Long> {
     List<Complaint> findByStatus(ComplaintStatus status);
     List<Complaint> findByType(ComplaintType type);
     List<Complaint> findByReportedShopId(Long shopId);
+    List<Complaint> findByReporterId(Long reporterId);
+    Optional<Complaint> findByOrderId(Long orderId);
+    boolean existsByOrderId(Long orderId);
 }
