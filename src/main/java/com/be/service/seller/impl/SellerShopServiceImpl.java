@@ -7,7 +7,7 @@ import com.be.dto.response.seller.mapper.SellerShopMapper;
 import com.be.entity.Shop;
 import com.be.entity.User;
 import com.be.repository.ShopRepository;
-import com.be.repository.UserRepository;
+import com.be.security.AuthHelper;
 import com.be.service.ImageStoreService;
 import com.be.service.seller.SellerShopService;
 import com.be.utils.KeyGeneratorUtil;
@@ -22,11 +22,6 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
 
-import com.be.security.JwtTokenProvider;
-import org.springframework.web.context.request.RequestContextHolder;
-import org.springframework.web.context.request.ServletRequestAttributes;
-import jakarta.servlet.http.HttpServletRequest;
-
 import java.util.Objects;
 import java.util.UUID;
 
@@ -37,19 +32,18 @@ public class SellerShopServiceImpl implements SellerShopService {
 
     private final ShopRepository shopRepository;
     private final ImageStoreService imageStoreService;
-    private final UserRepository userRepository;
-    private final JwtTokenProvider jwtTokenProvider;
+    private final AuthHelper authHelper;
     @Override
     @Transactional(readOnly = true)
     public ShopProfileResponse getMyShop() {
-        Shop shop = getCurrentSellerShop();
+        Shop shop = authHelper.getCurrentSellerShop();
         return SellerShopMapper.toProfileResponse(shop);
     }
 
     @Override
     @Transactional
     public ShopProfileResponse createShop(ShopCreateRequest request) {
-        User user = getCurrentUser();
+        User user = authHelper.getCurrentUser();
         // 1. Kiểm tra user chưa có shop
         if (shopRepository.existsBySellerId(user.getId())) {
             throw new IllegalStateException("Cửa hàng đã tồn tại cho tài khoản này.");
@@ -83,7 +77,7 @@ public class SellerShopServiceImpl implements SellerShopService {
     @Override
     @Transactional
     public ShopProfileResponse updateShop(ShopUpdateRequest request) {
-        Shop shop = getCurrentSellerShop();
+        Shop shop = authHelper.getCurrentSellerShop();
 
         // 1. Nếu thay đổi name -> re-generate slug
         if (StringUtils.hasText(request.name()) && !Objects.equals(request.name().trim(), shop.getName())) {
@@ -110,51 +104,6 @@ public class SellerShopServiceImpl implements SellerShopService {
         Shop updatedShop = shopRepository.save(shop);
         log.info("Cập nhật thành công shop: {} cho seller: {}", updatedShop.getName(), shop.getSeller().getId());
         return SellerShopMapper.toProfileResponse(updatedShop);
-    }
-
-    private User getCurrentUser() {
-        try {
-            HttpServletRequest request = ((ServletRequestAttributes) RequestContextHolder.currentRequestAttributes()).getRequest();
-            String authHeader = request.getHeader("Authorization");
-            if (authHeader != null && authHeader.startsWith("Bearer ")) {
-                String token = authHeader.substring(7);
-                if (jwtTokenProvider.validateToken(token)) {
-                    String email = jwtTokenProvider.getEmailFromToken(token);
-                    User user = userRepository.findByEmail(email).orElse(null);
-                    if (user != null) {
-                        return user;
-                    }
-                }
-            }
-        } catch (Exception e) {
-            // RequestContext not active or token invalid
-        }
-        return userRepository.findUserById(2L);
-    }
-
-    private Shop getCurrentSellerShop() {
-        User user = null;
-        try {
-            HttpServletRequest request = ((ServletRequestAttributes) RequestContextHolder.currentRequestAttributes()).getRequest();
-            String authHeader = request.getHeader("Authorization");
-            if (authHeader != null && authHeader.startsWith("Bearer ")) {
-                String token = authHeader.substring(7);
-                if (jwtTokenProvider.validateToken(token)) {
-                    String email = jwtTokenProvider.getEmailFromToken(token);
-                    user = userRepository.findByEmail(email).orElse(null);
-                }
-            }
-        } catch (Exception e) {
-            // RequestContext not active or token invalid
-        }
-
-        if (user != null) {
-            return shopRepository.findBySellerId(user.getId())
-                    .orElseThrow(() -> new EntityNotFoundException("Không tìm thấy thông tin cửa hàng cho tài khoản này."));
-        }
-
-        return shopRepository.findBySellerId(2L)
-                .orElseThrow(() -> new EntityNotFoundException("Không tìm thấy thông tin cửa hàng cho tài khoản này."));
     }
 
     private String generateUniqueSlug(String name) {

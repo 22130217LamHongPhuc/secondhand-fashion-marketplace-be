@@ -14,41 +14,41 @@ import java.util.List;
 public record ProductUpdateRequest(
         Long categoryId,
 
-        @Size(max = 255, message = "Product name must not exceed 255 characters")
+        @Size(max = 255, message = "Tên sản phẩm không được vượt quá 255 ký tự")
         String name,
 
-        @Size(max = 5000, message = "Product description must not exceed 5000 characters")
+        @Size(max = 5000, message = "Mô tả sản phẩm không được vượt quá 5000 ký tự")
         String description,
 
-        @Size(max = 100, message = "Brand must not exceed 100 characters")
+        @Size(max = 100, message = "Thương hiệu không được vượt quá 100 ký tự")
         String brand,
 
-        @Size(max = 100, message = "Origin country must not exceed 100 characters")
+        @Size(max = 100, message = "Xuất xứ không được vượt quá 100 ký tự")
         String originCountry,
 
         ProductCondition condition,
 
-        @DecimalMin(value = "0.0", inclusive = false, message = "Base price must be greater than 0")
+        @DecimalMin(value = "0.0", inclusive = false, message = "Giá gốc phải lớn hơn 0")
         BigDecimal basePrice,
 
-        @DecimalMin(value = "0.0", inclusive = false, message = "Sale price must be greater than 0")
+        @DecimalMin(value = "0.0", inclusive = false, message = "Giá bán phải lớn hơn 0")
         BigDecimal salePrice,
 
-        @Min(value = 0, message = "Stock quantity must be greater than or equal to 0")
+        @Min(value = 0, message = "Số lượng tồn kho phải lớn hơn hoặc bằng 0")
         Integer stockQuantity,
 
         Boolean isActive,
 
-        @Size(max = 20, message = "Product can have at most 20 images")
+        @Size(max = 20, message = "Sản phẩm chỉ có thể có tối đa 20 hình ảnh")
         List<@Valid ProductImageRequest> images,
 
-        @Size(max = 30, message = "Product can have at most 30 attributes")
+        @Size(max = 30, message = "Sản phẩm chỉ có thể có tối đa 30 thuộc tính")
         List<@Valid ProductAttributeRequest> attributes,
 
-        @Size(max = 20, message = "Product can have at most 20 tags")
-        List<@NotBlank(message = "Tag must not be blank") @Size(max = 100, message = "Tag must not exceed 100 characters") String> tags
+        @Size(max = 20, message = "Sản phẩm chỉ có thể có tối đa 20 thẻ")
+        List<@NotBlank(message = "Thẻ không được để trống") @Size(max = 100, message = "Thẻ không được vượt quá 100 ký tự") String> tags
 ) {
-    @AssertTrue(message = "Sale price must be less than or equal to base price")
+    @AssertTrue(message = "Giá bán phải nhỏ hơn hoặc bằng giá gốc")
     public boolean isSalePriceValid() {
         return salePrice == null || basePrice == null || salePrice.compareTo(basePrice) <= 0;
     }

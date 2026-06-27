@@ -15,9 +15,7 @@ import com.be.entity.User;
 import com.be.repository.OrderRepository;
 import com.be.repository.OrderStatusLogRepository;
 import com.be.repository.ProductRepository;
-import com.be.repository.ShopRepository;
-import com.be.repository.UserRepository;
-import com.be.security.JwtTokenProvider;
+import com.be.security.AuthHelper;
 import com.be.service.seller.SellerOrderService;
 import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
@@ -25,9 +23,6 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.web.context.request.RequestContextHolder;
-import org.springframework.web.context.request.ServletRequestAttributes;
-import jakarta.servlet.http.HttpServletRequest;
 
 import java.time.YearMonth;
 
@@ -37,13 +32,11 @@ public class SellerOrderServiceImpl implements SellerOrderService {
     private final OrderRepository orderRepository;
     private final OrderStatusLogRepository orderStatusLogRepository;
     private final ProductRepository productRepository;
-    private final ShopRepository shopRepository;
-    private final UserRepository userRepository;
-    private final JwtTokenProvider jwtTokenProvider;
+    private final AuthHelper authHelper;
 
     @Override
     public Page<OrderListResponse> getListByPage(int page) {
-        Shop shop = getCurrentSellerShop();
+        Shop shop = authHelper.getCurrentSellerShop();
         Page<Order> orders = orderRepository.getListByShopAndPage(shop.getId(), PageRequest.of(page, Constant.ORDER_SIZE));
         return orders.map(SellerOrderMapper::toListResponse);
     }
@@ -51,24 +44,24 @@ public class SellerOrderServiceImpl implements SellerOrderService {
     @Override
     public OrderDetailResponse getDetails(Long id) {
         Order order = orderRepository.findByIdWithDetails(id)
-                .orElseThrow(() -> new EntityNotFoundException("Order not found with id: " + id));
-        Shop shop = getCurrentSellerShop();
+                .orElseThrow(() -> new EntityNotFoundException("Không tìm thấy đơn hàng với id: " + id));
+        Shop shop = authHelper.getCurrentSellerShop();
         if (!order.getShop().getId().equals(shop.getId())) {
-            throw new IllegalStateException("You do not have permission to view this order");
+            throw new IllegalStateException("Bạn không có quyền xem đơn hàng này");
         }
         return SellerOrderMapper.toDetailResponse(order);
     }
 
     @Override
     public Page<OrderListResponse> getListByStatusAndOrderCode(OrderStatus status, String orderCode, int page) {
-        Shop shop = getCurrentSellerShop();
+        Shop shop = authHelper.getCurrentSellerShop();
         Page<Order> orders = orderRepository.getListByShopAndStatusAndOrderCode(shop.getId(), status, orderCode, PageRequest.of(page, Constant.ORDER_SIZE));
         return orders.map(SellerOrderMapper::toListResponse);
     }
 
     @Override
     public Page<OrderListResponse> getListByMonth(int year, int month, int page) {
-        Shop shop = getCurrentSellerShop();
+        Shop shop = authHelper.getCurrentSellerShop();
         YearMonth yearMonth = YearMonth.of(year, month);
         Page<Order> orders = orderRepository.getListByShopAndMonth(
                 shop.getId(),
@@ -111,11 +104,11 @@ public class SellerOrderServiceImpl implements SellerOrderService {
 
     private Order updateOrderStatus(Long orderId, OrderStatus status, String note) {
         Order order = orderRepository.findById(orderId)
-                .orElseThrow(() -> new IllegalArgumentException("Order not found with id: " + orderId));
+                .orElseThrow(() -> new IllegalArgumentException("Không tìm thấy đơn hàng với id: " + orderId));
 
-        Shop shop = getCurrentSellerShop();
+        Shop shop = authHelper.getCurrentSellerShop();
         if (!order.getShop().getId().equals(shop.getId())) {
-            throw new IllegalStateException("You do not have permission to update this order");
+            throw new IllegalStateException("Bạn không có quyền cập nhật đơn hàng này");
         }
 
         OrderStatus previousStatus = order.getStatus();
@@ -144,7 +137,7 @@ public class SellerOrderServiceImpl implements SellerOrderService {
         };
 
         if (!valid) {
-            throw new IllegalStateException("Unsuitable status");
+            throw new IllegalStateException("Trạng thái chuyển đổi không hợp lệ");
         }
     }
 
@@ -165,31 +158,5 @@ public class SellerOrderServiceImpl implements SellerOrderService {
             }
             productRepository.save(product);
         }
-    }
-
-    private Shop getCurrentSellerShop() {
-        User user = null;
-        try {
-            HttpServletRequest request = ((ServletRequestAttributes) RequestContextHolder.currentRequestAttributes()).getRequest();
-            String authHeader = request.getHeader("Authorization");
-            if (authHeader != null && authHeader.startsWith("Bearer ")) {
-                String token = authHeader.substring(7);
-                if (jwtTokenProvider.validateToken(token)) {
-                    String email = jwtTokenProvider.getEmailFromToken(token);
-                    user = userRepository.findByEmail(email).orElse(null);
-                }
-            }
-        } catch (Exception e) {
-            // RequestContext not active or token invalid
-        }
-
-        if (user != null) {
-            final User finalUser = user;
-            return shopRepository.findBySellerId(finalUser.getId())
-                    .orElseThrow(() -> new EntityNotFoundException("Shop not found for user: " + finalUser.getEmail()));
-        }
-
-        return shopRepository.findBySellerId(2L)
-                .orElseThrow(() -> new EntityNotFoundException("Shop not found for current seller"));
     }
 }

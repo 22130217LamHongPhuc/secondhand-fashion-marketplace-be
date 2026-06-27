@@ -19,12 +19,7 @@ import com.be.entity.Shop;
 import com.be.entity.User;
 import com.be.repository.CategoryRepository;
 import com.be.repository.ProductRepository;
-import com.be.repository.ShopRepository;
-import com.be.repository.UserRepository;
-import com.be.security.JwtTokenProvider;
-import org.springframework.web.context.request.RequestContextHolder;
-import org.springframework.web.context.request.ServletRequestAttributes;
-import jakarta.servlet.http.HttpServletRequest;
+import com.be.security.AuthHelper;
 import com.be.service.ImageUploadExecutorService;
 import com.be.service.seller.SellerProductService;
 import com.be.utils.KeyGeneratorUtil;
@@ -36,8 +31,6 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Page;
-import org.springframework.security.core.Authentication;
-import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
@@ -57,16 +50,14 @@ import java.util.concurrent.CompletionException;
 public class SellerProductServiceImpl implements SellerProductService {
     private final ProductRepository productRepository;
     private final CategoryRepository categoryRepository;
-    private final ShopRepository shopRepository;
-    private final UserRepository userRepository;
-    private final JwtTokenProvider jwtTokenProvider;
+    private final AuthHelper authHelper;
 
     @Value("${cloudflare.r2.domain}")
     private String cloudflareDomain;
 
     @Override
     public Page<ProductListResponse> searchProducts(String keyword, Boolean isActive, int page) {
-        Shop shop = getCurrentSellerShop();
+        Shop shop = authHelper.getCurrentSellerShop();
         Page<Product> productPage = productRepository.searchShopProducts(shop.getId(), keyword, isActive, PageRequest.of(page, Constant.PRODUCT_SIZE));
         List<Long> ids = productPage.getContent().stream().map(Product::getId).toList();
         List<Product> productsWithImages = productRepository.findAllWithImagesByIds(ids);
@@ -79,7 +70,7 @@ public class SellerProductServiceImpl implements SellerProductService {
     @Override
     public ProductDetailResponse getDetails(long id) {
         Product product = productRepository.findByIdWithDetails(id)
-                .orElseThrow(() -> new EntityNotFoundException("Product not found with id: " + id));
+                .orElseThrow(() -> new EntityNotFoundException("Không tìm thấy sản phẩm với id: " + id));
         return SellerProductMapper.toDetailResponse(product);
     }
 
@@ -87,7 +78,7 @@ public class SellerProductServiceImpl implements SellerProductService {
     @Override
     @Transactional(rollbackFor = {IOException.class, IllegalArgumentException.class})
     public ProductMutationResponse createProduct(ProductCreateRequest request) {
-        Shop shop = getCurrentSellerShop();
+        Shop shop = authHelper.getCurrentSellerShop();
         Category category = getCategory(request.categoryId());
 
         Product product = Product.builder()
@@ -125,11 +116,11 @@ public class SellerProductServiceImpl implements SellerProductService {
     @Transactional
     public ProductMutationResponse updateProduct(long id, ProductUpdateRequest request) {
         Product product = productRepository.findById(id)
-                .orElseThrow(() -> new EntityNotFoundException("Product not found with id: " + id));
+                .orElseThrow(() -> new EntityNotFoundException("Không tìm thấy sản phẩm với id: " + id));
 
-        Shop currentShop = getCurrentSellerShop();
+        Shop currentShop = authHelper.getCurrentSellerShop();
         if (!Objects.equals(product.getShop().getId(), currentShop.getId())) {
-            throw new IllegalStateException("You do not have permission to update this product");
+            throw new IllegalStateException("Bạn không có quyền cập nhật sản phẩm này");
         }
 
         if (request.categoryId() != null) {
@@ -193,35 +184,9 @@ public class SellerProductServiceImpl implements SellerProductService {
 
     @Override
     public void deleteProduct(long id) {
-        throw new UnsupportedOperationException("Not implemented yet");
+        throw new UnsupportedOperationException("Chưa được triển khai");
     }
 
-
-    private Shop getCurrentSellerShop() {
-        User user = null;
-        try {
-            HttpServletRequest request = ((ServletRequestAttributes) RequestContextHolder.currentRequestAttributes()).getRequest();
-            String authHeader = request.getHeader("Authorization");
-            if (authHeader != null && authHeader.startsWith("Bearer ")) {
-                String token = authHeader.substring(7);
-                if (jwtTokenProvider.validateToken(token)) {
-                    String email = jwtTokenProvider.getEmailFromToken(token);
-                    user = userRepository.findByEmail(email).orElse(null);
-                }
-            }
-        } catch (Exception e) {
-            // RequestContext not active or token invalid
-        }
-
-        if (user != null) {
-            final User finalUser = user;
-            return shopRepository.findBySellerId(finalUser.getId())
-                    .orElseThrow(() -> new EntityNotFoundException("Shop not found for user: " + finalUser.getEmail()));
-        }
-
-        return shopRepository.findBySellerId(2L)
-                .orElseThrow(() -> new EntityNotFoundException("Shop not found for current seller"));
-    }
 
     private Category getCategory(Long categoryId) {
         if (categoryId == null) {
@@ -229,7 +194,7 @@ public class SellerProductServiceImpl implements SellerProductService {
         }
 
         return categoryRepository.findById(categoryId)
-                .orElseThrow(() -> new EntityNotFoundException("Category not found with id: " + categoryId));
+                .orElseThrow(() -> new EntityNotFoundException("Không tìm thấy danh mục với id: " + categoryId));
     }
 
 
@@ -262,7 +227,7 @@ public class SellerProductServiceImpl implements SellerProductService {
 
     private void validatePrice(BigDecimal basePrice, BigDecimal salePrice) {
         if (salePrice != null && basePrice != null && salePrice.compareTo(basePrice) > 0) {
-            throw new IllegalArgumentException("Sale price must be less than or equal to base price");
+            throw new IllegalArgumentException("Giá bán phải nhỏ hơn hoặc bằng giá gốc");
         }
     }
 

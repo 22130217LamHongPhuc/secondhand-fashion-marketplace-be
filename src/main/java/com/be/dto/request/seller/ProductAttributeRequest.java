@@ -4,12 +4,12 @@ import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
 
 public record ProductAttributeRequest(
-        @NotBlank(message = "Attribute key is required")
-        @Size(max = 100, message = "Attribute key must not exceed 100 characters")
+        @NotBlank(message = "Tên thuộc tính không được để trống")
+        @Size(max = 100, message = "Tên thuộc tính không được vượt quá 100 ký tự")
         String attrKey,
 
-        @NotBlank(message = "Attribute value is required")
-        @Size(max = 255, message = "Attribute value must not exceed 255 characters")
+        @NotBlank(message = "Giá trị thuộc tính không được để trống")
+        @Size(max = 255, message = "Giá trị thuộc tính không được vượt quá 255 ký tự")
         String attrValue
 ) {
 }

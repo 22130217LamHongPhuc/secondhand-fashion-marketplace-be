@@ -1,4 +1,4 @@
-package com.be.controller.seller;
+package com.be.controller.customer;
 
 import com.be.entity.Promotion;
 import com.be.entity.User;

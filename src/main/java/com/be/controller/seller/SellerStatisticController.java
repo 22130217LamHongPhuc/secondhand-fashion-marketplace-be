@@ -30,7 +30,7 @@ public class SellerStatisticController {
         if (data == null) {
             return ResponseEntity.notFound().build();
         }
-        return ResponseEntity.ok(ApiResponse.success(data, "Get dashboard data successfully"));
+        return ResponseEntity.ok(ApiResponse.success(data, "Lấy dữ liệu dashboard thành công"));
     }
 
     @GetMapping("/analytics")
@@ -42,6 +42,6 @@ public class SellerStatisticController {
         if (data == null) {
             return ResponseEntity.notFound().build();
         }
-        return ResponseEntity.ok(ApiResponse.success(data, "Get analytics data successfully"));
+        return ResponseEntity.ok(ApiResponse.success(data, "Lấy dữ liệu thống kê thành công"));
     }
 }
