@@ -13,8 +13,7 @@ import com.be.entity.User;
 import com.be.repository.ChatConversationRepository;
 import com.be.repository.ChatMessageRepository;
 import com.be.repository.ShopRepository;
-import com.be.repository.UserRepository;
-import com.be.security.JwtTokenProvider;
+import com.be.security.AuthHelper;
 import com.be.service.ChatService;
 import com.be.service.SseEmitterService;
 import jakarta.persistence.EntityNotFoundException;
@@ -23,8 +22,6 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
-import org.springframework.web.context.request.RequestContextHolder;
-import org.springframework.web.context.request.ServletRequestAttributes;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -37,16 +34,15 @@ public class ChatServiceImpl implements ChatService {
     private final ChatConversationRepository chatConversationRepository;
     private final ChatMessageRepository chatMessageRepository;
     private final ShopRepository shopRepository;
-    private final UserRepository userRepository;
-    private final JwtTokenProvider jwtTokenProvider;
+    private final AuthHelper authHelper;
     private final SseEmitterService sseEmitterService;
 
     @Override
     @Transactional(readOnly = true)
     public List<ChatConversationResponse> getConversations(String scope) {
-        User currentUser = getCurrentUser();
+        User currentUser = authHelper.getCurrentUser();
         if (SCOPE_SELLER.equalsIgnoreCase(scope)) {
-            Shop shop = getCurrentSellerShop(currentUser);
+            Shop shop = authHelper.getCurrentSellerShop(currentUser);
             return chatConversationRepository.findShopConversations(shop.getId())
                     .stream()
                     .map(ChatConversationResponse::from)
@@ -62,7 +58,7 @@ public class ChatServiceImpl implements ChatService {
     @Override
     @Transactional
     public ChatConversationResponse createConversation(ChatConversationCreateRequest request) {
-        User customer = getCurrentUser();
+        User customer = authHelper.getCurrentUser();
         Shop shop = shopRepository.findByIdAndIsActiveTrue(request.shopId())
                 .orElseThrow(() -> new EntityNotFoundException("Không tìm thấy shop."));
 
@@ -83,7 +79,7 @@ public class ChatServiceImpl implements ChatService {
     @Override
     @Transactional
     public ChatConversationResponse getConversation(Long conversationId) {
-        User currentUser = getCurrentUser();
+        User currentUser = authHelper.getCurrentUser();
         ChatConversation conversation = getAccessibleConversation(conversationId, currentUser);
         
         ChatSenderRole userRole = resolveSenderRole(conversation, currentUser);
@@ -120,7 +116,7 @@ public class ChatServiceImpl implements ChatService {
     @Override
     @Transactional(readOnly = true)
     public List<ChatMessageResponse> getMessages(Long conversationId) {
-        ChatConversation conversation = getAccessibleConversation(conversationId, getCurrentUser());
+        ChatConversation conversation = getAccessibleConversation(conversationId, authHelper.getCurrentUser());
         return chatMessageRepository.findByConversationIdAndIsDeletedFalseOrderByCreatedAtAsc(conversation.getId())
                 .stream()
                 .map(ChatMessageResponse::from)
@@ -130,7 +126,7 @@ public class ChatServiceImpl implements ChatService {
     @Override
     @Transactional
     public ChatMessageResponse sendMessage(Long conversationId, ChatMessageSendRequest request) {
-        User currentUser = getCurrentUser();
+        User currentUser = authHelper.getCurrentUser();
         ChatConversation conversation = getAccessibleConversation(conversationId, currentUser);
         ChatSenderRole senderRole = resolveSenderRole(conversation, currentUser);
         ChatMessageType messageType = request.messageType() != null ? request.messageType() : ChatMessageType.TEXT;
@@ -194,29 +190,6 @@ public class ChatServiceImpl implements ChatService {
             return ChatSenderRole.SELLER;
         }
         throw new IllegalArgumentException("Bạn không có quyền truy cập hội thoại này.");
-    }
-
-    private Shop getCurrentSellerShop(User currentUser) {
-        return shopRepository.findBySellerId(currentUser.getId())
-                .orElseThrow(() -> new EntityNotFoundException("Không tìm thấy shop của seller hiện tại."));
-    }
-
-    private User getCurrentUser() {
-        try {
-            HttpServletRequest request = ((ServletRequestAttributes) RequestContextHolder.currentRequestAttributes()).getRequest();
-            String authHeader = request.getHeader("Authorization");
-            if (authHeader != null && authHeader.startsWith("Bearer ")) {
-                String token = authHeader.substring(7);
-                if (jwtTokenProvider.validateToken(token)) {
-                    String email = jwtTokenProvider.getEmailFromToken(token);
-                    return userRepository.findByEmail(email)
-                            .orElseThrow(() -> new EntityNotFoundException("Không tìm thấy người dùng."));
-                }
-            }
-        } catch (Exception ignored) {
-            // Fall through to a clear error below.
-        }
-        throw new IllegalArgumentException("Bạn cần đăng nhập để sử dụng chat.");
     }
 
     private String buildPreview(ChatMessage message) {

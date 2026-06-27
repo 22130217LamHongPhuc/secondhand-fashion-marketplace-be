@@ -5,19 +5,12 @@ import com.be.dto.response.seller.SellerDashboardResponse;
 import com.be.entity.Shop;
 import com.be.entity.User;
 import com.be.repository.SellerStatisticRepository;
-import com.be.repository.ShopRepository;
+import com.be.security.AuthHelper;
 import com.be.service.seller.SellerStatisticService;
 import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
-import org.springframework.security.core.Authentication;
-import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 
-import com.be.repository.UserRepository;
-import com.be.security.JwtTokenProvider;
-import org.springframework.web.context.request.RequestContextHolder;
-import org.springframework.web.context.request.ServletRequestAttributes;
-import jakarta.servlet.http.HttpServletRequest;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
@@ -34,15 +27,13 @@ import java.util.List;
 @RequiredArgsConstructor
 public class SellerStatisticServiceImpl implements SellerStatisticService {
     private final SellerStatisticRepository statisticRepository;
-    private final ShopRepository shopRepository;
-    private final UserRepository userRepository;
-    private final JwtTokenProvider jwtTokenProvider;
+    private final AuthHelper authHelper;
 
     private static final String[] CATEGORY_COLORS = {"#c75c2e", "#d4724a", "#f5c9a8", "#e8e5de", "#4b5563"};
 
     @Override
     public SellerDashboardResponse getDashboardData(String revenuePeriod, LocalDate startDate, LocalDate endDate) {
-        Shop shop = getCurrentSellerShop();
+        Shop shop = authHelper.getCurrentSellerShop();
 
         Long resolvedShopId = shop.getId();
 
@@ -188,7 +179,7 @@ public class SellerStatisticServiceImpl implements SellerStatisticService {
 
     @Override
     public SellerAnalyticsResponse getAnalyticsData( int page, int size) {
-        Shop shop = getCurrentSellerShop();
+        Shop shop = authHelper.getCurrentSellerShop();
 
         Long resolvedShopId = shop.getId();
         Long sellerId = shop.getSeller().getId();
@@ -277,31 +268,5 @@ public class SellerStatisticServiceImpl implements SellerStatisticService {
         );
 
         return new SellerAnalyticsResponse(repSummary, metrics, pageData);
-    }
-
-    private Shop getCurrentSellerShop() {
-        User user = null;
-        try {
-            HttpServletRequest request = ((ServletRequestAttributes) RequestContextHolder.currentRequestAttributes()).getRequest();
-            String authHeader = request.getHeader("Authorization");
-            if (authHeader != null && authHeader.startsWith("Bearer ")) {
-                String token = authHeader.substring(7);
-                if (jwtTokenProvider.validateToken(token)) {
-                    String email = jwtTokenProvider.getEmailFromToken(token);
-                    user = userRepository.findByEmail(email).orElse(null);
-                }
-            }
-        } catch (Exception e) {
-            // RequestContext not active or token invalid
-        }
-
-        if (user != null) {
-            final User finalUser = user;
-            return shopRepository.findBySellerId(finalUser.getId())
-                    .orElseThrow(() -> new EntityNotFoundException("Shop not found for user: " + finalUser.getEmail()));
-        }
-
-        return shopRepository.findBySellerId(2L)
-                .orElseThrow(() -> new EntityNotFoundException("Shop not found for current seller"));
     }
 }

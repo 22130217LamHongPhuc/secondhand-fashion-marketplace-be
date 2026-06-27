@@ -30,6 +30,6 @@ public class SellerCategoryController {
                 c.getSortOrder()
             ))
             .toList();
-        return ResponseEntity.ok(ApiResponse.success(response, "Get categories successfully"));
+        return ResponseEntity.ok(ApiResponse.success(response, "Lấy danh sách danh mục thành công"));
     }
 }

@@ -30,7 +30,7 @@ public class SellerOrderController {
     ) {
         return ResponseEntity.ok(ApiResponse.success(
                 sellerOrderService.getListByPage(page),
-                "Get order list successfully"
+                "Lấy danh sách đơn hàng thành công"
         ));
     }
 
@@ -38,7 +38,7 @@ public class SellerOrderController {
     public ResponseEntity<ApiResponse<OrderDetailResponse>> getDetails(@PathVariable Long id) {
         return ResponseEntity.ok(ApiResponse.success(
                 sellerOrderService.getDetails(id),
-                "Get order details successfully"
+                "Lấy thông tin chi tiết đơn hàng thành công"
         ));
     }
 
@@ -50,7 +50,7 @@ public class SellerOrderController {
     ) {
         return ResponseEntity.ok(ApiResponse.success(
                 sellerOrderService.getListByStatusAndOrderCode(status, orderCode, page),
-                "Get order list by status successfully"
+                "Lấy danh sách đơn hàng theo trạng thái thành công"
         ));
     }
 
@@ -61,7 +61,7 @@ public class SellerOrderController {
         LocalDate now = LocalDate.now();
         return ResponseEntity.ok(ApiResponse.success(
                 sellerOrderService.getListByMonth(now.getYear(), now.getMonthValue(), page),
-                "Get current month order list successfully"
+                "Lấy danh sách đơn hàng trong tháng thành công"
         ));
     }
 
@@ -69,7 +69,7 @@ public class SellerOrderController {
     public ResponseEntity<ApiResponse<OrderActionResponse>> confirmOrder(@PathVariable Long id) {
         return ResponseEntity.ok(ApiResponse.success(
                 sellerOrderService.confirmOrder(id),
-                "Confirm order successfully"
+                "Xác nhận đơn hàng thành công"
         ));
     }
 
@@ -77,7 +77,7 @@ public class SellerOrderController {
     public ResponseEntity<ApiResponse<OrderActionResponse>> startDelivery(@PathVariable Long id) {
         return ResponseEntity.ok(ApiResponse.success(
                 sellerOrderService.startDelivery(id),
-                "Start delivery successfully"
+                "Bắt đầu giao hàng thành công"
         ));
     }
 
@@ -85,7 +85,7 @@ public class SellerOrderController {
     public ResponseEntity<ApiResponse<OrderActionResponse>> completeOrder(@PathVariable Long id) {
         return ResponseEntity.ok(ApiResponse.success(
                 sellerOrderService.completeOrder(id),
-                "Complete order successfully"
+                "Hoàn thành đơn hàng thành công"
         ));
     }
 
@@ -96,7 +96,7 @@ public class SellerOrderController {
     ) {
         return ResponseEntity.ok(ApiResponse.success(
                 sellerOrderService.cancelOrder(id, reason),
-                "Cancel order successfully"
+                "Hủy đơn hàng thành công"
         ));
     }
 }

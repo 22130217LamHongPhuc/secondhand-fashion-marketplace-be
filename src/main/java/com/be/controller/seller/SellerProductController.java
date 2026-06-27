@@ -37,7 +37,7 @@ public class SellerProductController {
     ) {
         return ResponseEntity.ok(ApiResponse.success(
                 sellerProductService.searchProducts(keyword, isActive, page),
-                "Get product list successfully"
+                "Lấy danh sách sản phẩm thành công"
         ));
     }
 
@@ -46,7 +46,7 @@ public class SellerProductController {
     public ResponseEntity<ApiResponse<ProductDetailResponse>> getDetails(@PathVariable long id) {
         return ResponseEntity.ok(ApiResponse.success(
                 sellerProductService.getDetails(id),
-                "Get product details successfully"
+                "Lấy chi tiết sản phẩm thành công"
         ));
     }
 
@@ -58,7 +58,7 @@ public class SellerProductController {
     ) {
         return ResponseEntity.ok(ApiResponse.success(
                 sellerProductService.createProduct(request),
-                "Create product successfully"
+                "Tạo sản phẩm thành công"
         ));
     }
 
@@ -69,13 +69,13 @@ public class SellerProductController {
     ) {
         return ResponseEntity.ok(ApiResponse.success(
                 sellerProductService.updateProduct(id, request),
-                "Update product successfully"
+                "Cập nhật sản phẩm thành công"
         ));
     }
 
     @DeleteMapping("/{id}")
     public ResponseEntity<ApiResponse<Void>> deleteProduct(@PathVariable long id) {
         sellerProductService.deleteProduct(id);
-        return ResponseEntity.ok(ApiResponse.success(null, "Delete product successfully"));
+        return ResponseEntity.ok(ApiResponse.success(null, "Xóa sản phẩm thành công"));
     }
 }
