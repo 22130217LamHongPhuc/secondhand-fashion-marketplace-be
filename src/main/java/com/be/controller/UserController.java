@@ -7,6 +7,7 @@ import com.be.entity.User;
 import com.be.entity.UserAddress;
 import com.be.repository.UserRepository;
 import com.be.repository.UserAddressRepository;
+import com.be.service.GhnShippingService;
 import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
@@ -23,6 +24,7 @@ public class UserController {
 
     private final UserRepository userRepository;
     private final UserAddressRepository userAddressRepository;
+    private final GhnShippingService ghnShippingService;
 
     @GetMapping("/{id}")
     public ResponseEntity<ApiResponse<UserResponse>> getUserById(@PathVariable Long id) {
@@ -62,6 +64,7 @@ public class UserController {
                 .orElseThrow(() -> new EntityNotFoundException("Không tìm thấy người dùng với ID: " + id));
         
         request.setUser(user);
+        ghnShippingService.enrichAddressCodes(request);
         
         if (Boolean.TRUE.equals(request.getIsDefault())) {
             List<UserAddress> existing = userAddressRepository.findByUserId(id);

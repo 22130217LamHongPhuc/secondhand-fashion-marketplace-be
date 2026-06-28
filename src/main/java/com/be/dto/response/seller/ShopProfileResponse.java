@@ -6,5 +6,12 @@ public record ShopProfileResponse(
         String slug,
         String description,
         String avatarUrl,
-        String bannerUrl
+        String bannerUrl,
+        Integer provinceId,
+        String provinceName,
+        Integer districtId,
+        String districtName,
+        String wardCode,
+        String wardName,
+        String addressDetail
 ) {}

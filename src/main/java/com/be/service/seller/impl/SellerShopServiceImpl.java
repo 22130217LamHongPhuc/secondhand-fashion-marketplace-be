@@ -67,6 +67,13 @@ public class SellerShopServiceImpl implements SellerShopService {
                 .isActive(true)
                 .avatarUrl(avatarUrl)
                 .bannerUrl(bannerUrl)
+                .provinceId(request.provinceId())
+                .provinceName(request.provinceName().trim())
+                .districtId(request.districtId())
+                .districtName(request.districtName().trim())
+                .wardCode(request.wardCode().trim())
+                .wardName(request.wardName().trim())
+                .addressDetail(request.addressDetail().trim())
                 .build();
 
         Shop savedShop = shopRepository.save(shop);
@@ -99,6 +106,28 @@ public class SellerShopServiceImpl implements SellerShopService {
         // 4. Nếu thay đổi bannerUrl -> temp to banner
         if (StringUtils.hasText(request.bannerUrl()) && !Objects.equals(request.bannerUrl(), shop.getBannerUrl())) {
             shop.setBannerUrl(processBannerUrl(request.bannerUrl()));
+        }
+
+        if (request.provinceId() != null) {
+            shop.setProvinceId(request.provinceId());
+        }
+        if (StringUtils.hasText(request.provinceName())) {
+            shop.setProvinceName(request.provinceName().trim());
+        }
+        if (request.districtId() != null) {
+            shop.setDistrictId(request.districtId());
+        }
+        if (StringUtils.hasText(request.districtName())) {
+            shop.setDistrictName(request.districtName().trim());
+        }
+        if (StringUtils.hasText(request.wardCode())) {
+            shop.setWardCode(request.wardCode().trim());
+        }
+        if (StringUtils.hasText(request.wardName())) {
+            shop.setWardName(request.wardName().trim());
+        }
+        if (StringUtils.hasText(request.addressDetail())) {
+            shop.setAddressDetail(request.addressDetail().trim());
         }
 
         Shop updatedShop = shopRepository.save(shop);
