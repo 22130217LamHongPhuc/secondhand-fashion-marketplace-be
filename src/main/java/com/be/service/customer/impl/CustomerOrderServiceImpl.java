@@ -36,8 +36,8 @@ import com.be.repository.UserRoleMappingRepository;
 import com.be.service.customer.CustomerOrderService;
 import com.be.service.SseEmitterService;
 import com.be.service.PromotionService;
+import com.be.service.GhnShippingService;
 import lombok.RequiredArgsConstructor;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
@@ -69,15 +69,7 @@ public class CustomerOrderServiceImpl implements CustomerOrderService {
     private final SseEmitterService sseEmitterService;
 
     private final PromotionService promotionService;
-
-    @Value("${ghn.api.base-url:https://dev-online-gateway.ghn.vn/shiip/public-api}")
-    private String ghnBaseUrl;
-
-    @Value("${ghn.api.token:db44e853-cc14-11ef-b1ed-769685acafa5}")
-    private String ghnToken;
-
-    @Value("${ghn.api.shop-id:2509459}")
-    private String ghnShopId;
+    private final GhnShippingService ghnShippingService;
 
 
     @Override
@@ -308,7 +300,7 @@ public class CustomerOrderServiceImpl implements CustomerOrderService {
             itemsSubtotal = itemsSubtotal.add(subtotal);
 
             // Tính phí ship qua GHN API cho shop hiện tại
-            BigDecimal shopShippingFee = calculateGhnFee(
+            BigDecimal shopShippingFee = ghnShippingService.calculateGhnFee(
                     shop.getDistrictId(),
                     shop.getWardCode(),
                     shippingAddress.getDistrictId(),
@@ -318,7 +310,7 @@ public class CustomerOrderServiceImpl implements CustomerOrderService {
                     15, // width
                     totalHeight,
                     subtotal
-            );
+            ).fee();
             shippingFeeByShop.put(shop, shopShippingFee);
             totalShippingFee = totalShippingFee.add(shopShippingFee);
         }
@@ -524,59 +516,6 @@ public class CustomerOrderServiceImpl implements CustomerOrderService {
                 .orders(orderDetailResponses)
                 .paymentUrl(paymentUrl)
                 .build();
-    }
-
-    /**
-     * Gọi API Giao Hàng Nhanh (GHN) để tính phí vận chuyển từ địa chỉ Shop đến người mua.
-     */
-    private BigDecimal calculateGhnFee(Integer fromDistrictId, String fromWardCode, 
-                                        Integer toDistrictId, String toWardCode, 
-                                        int weight, int length, int width, int height,
-                                        BigDecimal insuranceValue) {
-        if (fromDistrictId == null || fromWardCode == null || toDistrictId == null || toWardCode == null) {
-            return new BigDecimal("30000"); // Fallback phí cố định nếu thiếu dữ liệu địa chỉ
-        }
-
-        try {
-            org.springframework.web.client.RestTemplate restTemplate = new org.springframework.web.client.RestTemplate();
-            String url = ghnBaseUrl + "/v2/shipping-order/fee";
-
-            org.springframework.http.HttpHeaders headers = new org.springframework.http.HttpHeaders();
-            headers.set("Token", ghnToken);
-            headers.set("ShopId", ghnShopId);
-            headers.setContentType(org.springframework.http.MediaType.APPLICATION_JSON);
-
-            java.util.Map<String, Object> requestBody = new java.util.HashMap<>();
-            requestBody.put("from_district_id", fromDistrictId);
-            requestBody.put("from_ward_code", fromWardCode);
-            requestBody.put("service_id", null);
-            requestBody.put("service_type_id", 2); // 2: Hàng tiêu chuẩn (Standard)
-            requestBody.put("to_district_id", toDistrictId);
-            requestBody.put("to_ward_code", toWardCode);
-            requestBody.put("height", height);
-            requestBody.put("length", length);
-            requestBody.put("weight", weight);
-            requestBody.put("width", width);
-            requestBody.put("insurance_value", insuranceValue.intValue());
-            requestBody.put("cod_failed_amount", 0);
-
-            org.springframework.http.HttpEntity<java.util.Map<String, Object>> entity = new org.springframework.http.HttpEntity<>(requestBody, headers);
-            
-            org.springframework.http.ResponseEntity<java.util.Map> response = restTemplate.postForEntity(url, entity, java.util.Map.class);
-            if (response.getStatusCode().is2xxSuccessful() && response.getBody() != null) {
-                java.util.Map body = response.getBody();
-                if (body.containsKey("data")) {
-                    java.util.Map data = (java.util.Map) body.get("data");
-                    if (data.containsKey("total")) {
-                        Number total = (Number) data.get("total");
-                        return new BigDecimal(total.toString());
-                    }
-                }
-            }
-        } catch (Exception e) {
-            System.err.println("Lỗi tính phí ship GHN API: " + e.getMessage());
-        }
-        return new BigDecimal("30000"); // Fallback nếu API lỗi
     }
 
     @Override

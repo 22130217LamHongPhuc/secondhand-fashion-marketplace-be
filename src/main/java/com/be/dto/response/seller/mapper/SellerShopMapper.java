@@ -18,7 +18,14 @@ public final class SellerShopMapper {
                 shop.getSlug(),
                 shop.getDescription(),
                 shop.getAvatarUrl(),
-                shop.getBannerUrl()
+                shop.getBannerUrl(),
+                shop.getProvinceId(),
+                shop.getProvinceName(),
+                shop.getDistrictId(),
+                shop.getDistrictName(),
+                shop.getWardCode(),
+                shop.getWardName(),
+                shop.getAddressDetail()
         );
     }
 }
