@@ -13,5 +13,8 @@ public record ShopProfileResponse(
         String districtName,
         String wardCode,
         String wardName,
-        String addressDetail
+        String addressDetail,
+        Boolean isActive,
+        Boolean isVerified,
+        Integer warningStrikes
 ) {}
