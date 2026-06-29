@@ -43,9 +43,10 @@ public class SellerPromotionController {
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime toDate,
             @RequestParam(required = false) BigDecimal minPrice,
             @RequestParam(required = false) BigDecimal maxPrice,
+            @RequestParam(defaultValue = "newest") String sortBy,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "10") int size) {
-        return ResponseEntity.ok(shopPromotionService.getPromotionsByShop(keyword, fromDate, toDate, minPrice, maxPrice, page, size));
+        return ResponseEntity.ok(shopPromotionService.getPromotionsByShop(keyword, fromDate, toDate, minPrice, maxPrice, sortBy, page, size));
     }
 
     @GetMapping("/{promotionId}")

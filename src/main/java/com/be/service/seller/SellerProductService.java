@@ -10,7 +10,7 @@ import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
 public interface SellerProductService {
-    Page<ProductListResponse> searchProducts(String keyword, Boolean isActive, LocalDateTime fromDate, LocalDateTime toDate, BigDecimal minPrice, BigDecimal maxPrice, int page);
+    Page<ProductListResponse> searchProducts(String keyword, Boolean isActive, LocalDateTime fromDate, LocalDateTime toDate, BigDecimal minPrice, BigDecimal maxPrice, String sortBy, int page);
     ProductDetailResponse getDetails(long id);
     ProductMutationResponse createProduct(ProductCreateRequest request);
     ProductMutationResponse updateProduct(long id, ProductUpdateRequest request);

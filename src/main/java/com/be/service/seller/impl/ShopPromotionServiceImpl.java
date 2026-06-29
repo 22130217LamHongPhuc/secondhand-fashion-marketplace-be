@@ -15,6 +15,7 @@ import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Sort;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -138,10 +139,23 @@ public class ShopPromotionServiceImpl implements ShopPromotionService {
     }
 
     @Override
-    public Page<Promotion> getPromotionsByShop(String keyword, LocalDateTime fromDate, LocalDateTime toDate, BigDecimal minPrice, BigDecimal maxPrice, int page, int size) {
+    public Page<Promotion> getPromotionsByShop(String keyword, LocalDateTime fromDate, LocalDateTime toDate, BigDecimal minPrice, BigDecimal maxPrice, String sortBy, int page, int size) {
         Shop shop = authHelper.getCurrentSellerShop();
         Specification<Promotion> spec = PromotionSpecification.buildFilter(shop.getId(), keyword, fromDate, toDate, minPrice, maxPrice);
-        return promotionRepository.findAll(spec, PageRequest.of(page, size));
+        Sort sort = resolvePromotionSort(sortBy);
+        return promotionRepository.findAll(spec, PageRequest.of(page, size, sort));
+    }
+
+    private Sort resolvePromotionSort(String sortBy) {
+        if (sortBy == null) {
+            return Sort.by("createdAt").descending();
+        }
+        return switch (sortBy) {
+            case "price_asc" -> Sort.by("discountValue").ascending();
+            case "price_desc" -> Sort.by("discountValue").descending();
+            case "oldest" -> Sort.by("createdAt").ascending();
+            default -> Sort.by("createdAt").descending();
+        };
     }
 
     @Override

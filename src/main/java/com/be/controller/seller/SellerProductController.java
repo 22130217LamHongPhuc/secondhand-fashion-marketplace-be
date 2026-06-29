@@ -41,10 +41,11 @@ public class SellerProductController {
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime toDate,
             @RequestParam(required = false) BigDecimal minPrice,
             @RequestParam(required = false) BigDecimal maxPrice,
+            @RequestParam(defaultValue = "newest") String sortBy,
             @RequestParam(defaultValue = "0") int page
     ) {
         return ResponseEntity.ok(ApiResponse.success(
-                sellerProductService.searchProducts(keyword, isActive, fromDate, toDate, minPrice, maxPrice, page),
+                sellerProductService.searchProducts(keyword, isActive, fromDate, toDate, minPrice, maxPrice, sortBy, page),
                 "Lấy danh sách sản phẩm thành công"
         ));
     }

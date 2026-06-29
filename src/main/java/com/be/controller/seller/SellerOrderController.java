@@ -43,10 +43,11 @@ public class SellerOrderController {
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime toDate,
             @RequestParam(required = false) BigDecimal minPrice,
             @RequestParam(required = false) BigDecimal maxPrice,
+            @RequestParam(defaultValue = "newest") String sortBy,
             @RequestParam(defaultValue = "0") int page
     ) {
         return ResponseEntity.ok(ApiResponse.success(
-                sellerOrderService.searchOrders(status, orderCode, fromDate, toDate, minPrice, maxPrice, page),
+                sellerOrderService.searchOrders(status, orderCode, fromDate, toDate, minPrice, maxPrice, sortBy, page),
                 "Lấy danh sách đơn hàng thành công"
         ));
     }

@@ -17,7 +17,7 @@ public interface ShopPromotionService {
     Promotion updatePromotion(Long promotionId, PromotionUpdateDTO request);
 
     // Lấy danh sách mã để hiển thị trên dashboard của shop
-    Page<Promotion> getPromotionsByShop(String keyword, LocalDateTime fromDate, LocalDateTime toDate, BigDecimal minPrice, BigDecimal maxPrice, int page, int size);
+    Page<Promotion> getPromotionsByShop(String keyword, LocalDateTime fromDate, LocalDateTime toDate, BigDecimal minPrice, BigDecimal maxPrice, String sortBy, int page, int size);
 
     // Lấy chi tiết mã khuyến mãi
     Promotion getPromotionDetail(Long promotionId);

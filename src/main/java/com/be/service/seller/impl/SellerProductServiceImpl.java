@@ -31,6 +31,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Sort;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -59,15 +60,28 @@ public class SellerProductServiceImpl implements SellerProductService {
     private String cloudflareDomain;
 
     @Override
-    public Page<ProductListResponse> searchProducts(String keyword, Boolean isActive, LocalDateTime fromDate, LocalDateTime toDate, BigDecimal minPrice, BigDecimal maxPrice, int page) {
+    public Page<ProductListResponse> searchProducts(String keyword, Boolean isActive, LocalDateTime fromDate, LocalDateTime toDate, BigDecimal minPrice, BigDecimal maxPrice, String sortBy, int page) {
         Shop shop = authHelper.getCurrentSellerShop();
         Specification<Product> spec = ProductSpecification.buildFilter(shop.getId(), keyword, isActive, fromDate, toDate, minPrice, maxPrice);
-        Page<Product> productPage = productRepository.findAll(spec, PageRequest.of(page, Constant.PRODUCT_SIZE));
+        Sort sort = resolveProductSort(sortBy);
+        Page<Product> productPage = productRepository.findAll(spec, PageRequest.of(page, Constant.PRODUCT_SIZE, sort));
         List<Long> ids = productPage.getContent().stream().map(Product::getId).toList();
         List<Product> productsWithImages = productRepository.findAllWithImagesByIds(ids);
         java.util.Map<Long, Product> productMap = productsWithImages.stream()
                 .collect(java.util.stream.Collectors.toMap(Product::getId, p -> p));
         return productPage.map(p -> SellerProductMapper.toListResponse(productMap.getOrDefault(p.getId(), p)));
+    }
+
+    private Sort resolveProductSort(String sortBy) {
+        if (sortBy == null) {
+            return Sort.by("createdAt").descending();
+        }
+        return switch (sortBy) {
+            case "price_asc" -> Sort.by("salePrice").ascending();
+            case "price_desc" -> Sort.by("salePrice").descending();
+            case "oldest" -> Sort.by("createdAt").ascending();
+            default -> Sort.by("createdAt").descending();
+        };
     }
 
 
