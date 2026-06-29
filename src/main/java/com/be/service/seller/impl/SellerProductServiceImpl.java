@@ -28,6 +28,8 @@ import jakarta.persistence.EntityNotFoundException;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Size;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import com.be.service.ImageStoreService;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Page;
@@ -49,12 +51,14 @@ import java.util.Objects;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionException;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class SellerProductServiceImpl implements SellerProductService {
     private final ProductRepository productRepository;
     private final CategoryRepository categoryRepository;
     private final AuthHelper authHelper;
+    private final ImageStoreService imageStoreService;
 
     @Value("${cloudflare.r2.domain}")
     private String cloudflareDomain;
@@ -121,13 +125,31 @@ public class SellerProductServiceImpl implements SellerProductService {
     }
 
     private List<ProductImage> uploadAndBuildImages(Product product, List<ProductImageRequest> images) {
-
-        return images.stream().map(image -> ProductImage
-                .builder().url(UrlGenerator.convertTempUrlToProductUrl(image.imageUrl()))
+        return images.stream().map(image -> {
+            String originalUrl = image.imageUrl();
+            String targetUrl = originalUrl;
+            
+            try {
+                if (originalUrl != null && !originalUrl.isBlank()) {
+                    String key = KeyGeneratorUtil.extractKey(originalUrl);
+                    if (key.startsWith(KeyGeneratorUtil.FOLDER_TEMP)) {
+                        targetUrl = UrlGenerator.convertTempUrlToProductUrl(originalUrl);
+                        String targetKey = KeyGeneratorUtil.extractKey(targetUrl);
+                        imageStoreService.copyImage(key, targetKey);
+                    }
+                }
+            } catch (Exception e) {
+                log.error("Lỗi khi copy ảnh sản phẩm từ thư mục temp: {}", e.getMessage(), e);
+            }
+            
+            return ProductImage.builder()
+                .url(targetUrl)
                 .product(product)
-                .imageKey(KeyGeneratorUtil.extractKey(UrlGenerator.convertTempUrlToProductUrl(image.imageUrl())))
+                .imageKey(KeyGeneratorUtil.extractKey(targetUrl))
                 .isPrimary(image.isPrimary())
-                .sortOrder(image.sortOrder()).build()).toList();
+                .sortOrder(image.sortOrder())
+                .build();
+        }).toList();
     }
 
     @Override

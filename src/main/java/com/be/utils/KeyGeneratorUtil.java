@@ -47,13 +47,7 @@ public final class KeyGeneratorUtil {
             throw new IllegalArgumentException("Định dạng URL không hợp lệ: " + fullUrl, e);
         }
     }
-    /**
-     * Sinh ra Key tạm thời khi upload file.
-     * Áp dụng cách generateKey() ở trên để nối với tên file.
-     *
-     * @param originalFilename Tên file gốc (VD: "hinh-nen.png")
-     * @return Key lưu trên Cloudflare (VD: "temp/018f...-hinh-nen.png")
-     */
+
     public static String generateTempKey(String originalFilename) {
         String safeName = StringUtils.hasText(originalFilename) ? originalFilename.replaceAll("\\s+", "-") : "file";
         return FOLDER_TEMP + generateKey() + "-" + safeName;
