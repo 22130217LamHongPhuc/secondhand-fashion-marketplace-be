@@ -53,8 +53,8 @@ public class SellerOrderServiceImpl implements SellerOrderService {
             return Sort.by("createdAt").descending();
         }
         return switch (sortBy) {
-            case "price_asc" -> Sort.by("totalPrice").ascending();
-            case "price_desc" -> Sort.by("totalPrice").descending();
+            case "price_asc" -> Sort.by("subtotal").ascending();
+            case "price_desc" -> Sort.by("subtotal").descending();
             case "oldest" -> Sort.by("createdAt").ascending();
             default -> Sort.by("createdAt").descending();
         };
