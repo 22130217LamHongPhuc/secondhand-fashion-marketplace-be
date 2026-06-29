@@ -70,8 +70,8 @@ public class AdminServiceImpl implements AdminService {
     }
 
     @Override
-    public Page<User> getAllUsers(UserRole role, String search, Pageable pageable) {
-        return userRepository.findAllFiltered(role, search, pageable);
+    public Page<User> getAllUsers(UserRole role, Boolean active, String search, Pageable pageable) {
+        return userRepository.findAllFiltered(role, active, search, pageable);
     }
 
     @Override
@@ -324,5 +324,49 @@ public class AdminServiceImpl implements AdminService {
         }
         
         return saved;
+    }
+
+    @Override
+    public java.util.List<java.util.Map<String, Object>> getSalesData(String period) {
+        int days = 7;
+        if ("month".equalsIgnoreCase(period)) {
+            days = 30;
+        } else if ("week".equalsIgnoreCase(period)) {
+            days = 7;
+        }
+        
+        java.time.LocalDateTime startDate = java.time.LocalDateTime.now().minusDays(days);
+        java.util.List<com.be.entity.Order> orders = orderRepository.findOrdersSince(startDate);
+        
+        // Group by date (dd/MM)
+        java.time.format.DateTimeFormatter formatter = java.time.format.DateTimeFormatter.ofPattern("dd/MM");
+        
+        // Initialize map for all days in the range to ensure we have data points even for days with 0 sales
+        java.util.Map<String, java.util.Map<String, Object>> dailyData = new java.util.LinkedHashMap<>();
+        for (int i = days - 1; i >= 0; i--) {
+            java.time.LocalDateTime d = java.time.LocalDateTime.now().minusDays(i);
+            String label = d.format(formatter);
+            java.util.Map<String, Object> map = new java.util.HashMap<>();
+            map.put("label", label);
+            map.put("revenue", java.math.BigDecimal.ZERO);
+            map.put("orders", 0L);
+            dailyData.put(label, map);
+        }
+        
+        // Populate with real DB data
+        for (com.be.entity.Order order : orders) {
+            if (order.getCreatedAt() != null) {
+                String label = order.getCreatedAt().format(formatter);
+                if (dailyData.containsKey(label)) {
+                    java.util.Map<String, Object> map = dailyData.get(label);
+                    java.math.BigDecimal currentRevenue = (java.math.BigDecimal) map.get("revenue");
+                    java.math.BigDecimal orderTotal = order.getSubtotal() != null ? order.getSubtotal() : java.math.BigDecimal.ZERO;
+                    map.put("revenue", currentRevenue.add(orderTotal));
+                    map.put("orders", (Long) map.get("orders") + 1);
+                }
+            }
+        }
+        
+        return new java.util.ArrayList<>(dailyData.values());
     }
 }

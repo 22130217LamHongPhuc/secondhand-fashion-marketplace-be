@@ -15,7 +15,7 @@ import com.be.common.enums.UserRole;
 
 public interface AdminService {
     AdminDashboardResponse getDashboardStats();
-    Page<User> getAllUsers(UserRole role, String search, Pageable pageable);
+    Page<User> getAllUsers(UserRole role, Boolean active, String search, Pageable pageable);
     User getUserById(Long userId);
     User updateUserStatus(Long userId, boolean isActive);
     User updateUserRole(Long userId, String role);
@@ -37,4 +37,6 @@ public interface AdminService {
     // ============ COMPLAINT MANAGEMENT ============
     List<Complaint> getAllComplaints();
     Complaint updateComplaintStatus(Long complaintId, ComplaintStatus status, String resolution);
+
+    List<java.util.Map<String, Object>> getSalesData(String period);
 }

@@ -92,6 +92,9 @@ public interface OrderRepository extends JpaRepository<Order, Long>, JpaSpecific
 
         @Query("SELECT COALESCE(SUM(o.subtotal), 0) FROM Order o")
         BigDecimal sumTotalRevenue();
+
+    @Query("SELECT o FROM Order o WHERE o.createdAt >= :startDate")
+    List<Order> findOrdersSince(@Param("startDate") LocalDateTime startDate);
     @Query("""
             SELECT o.shop.id
             FROM Order o
