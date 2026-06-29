@@ -25,7 +25,10 @@ public final class SellerShopMapper {
                 shop.getDistrictName(),
                 shop.getWardCode(),
                 shop.getWardName(),
-                shop.getAddressDetail()
+                shop.getAddressDetail(),
+                shop.getIsActive(),
+                shop.getIsVerified(),
+                shop.getWarningStrikes()
         );
     }
 }
