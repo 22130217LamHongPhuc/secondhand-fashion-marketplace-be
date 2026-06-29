@@ -6,11 +6,12 @@ import com.be.dto.response.seller.OrderDetailResponse;
 import com.be.dto.response.seller.OrderActionResponse;
 import org.springframework.data.domain.Page;
 
+import java.math.BigDecimal;
+import java.time.LocalDateTime;
+
 public interface SellerOrderService {
-    Page<OrderListResponse> getListByPage(int page);
+    Page<OrderListResponse> searchOrders(OrderStatus status, String orderCode, LocalDateTime fromDate, LocalDateTime toDate, BigDecimal minPrice, BigDecimal maxPrice, int page);
     OrderDetailResponse getDetails(Long id);
-    Page<OrderListResponse> getListByStatusAndOrderCode(OrderStatus status, String orderCode, int page );
-    Page<OrderListResponse> getListByMonth(int year, int month, int page);
     OrderActionResponse confirmOrder(Long orderId);
     OrderActionResponse startDelivery(Long orderId);
     OrderActionResponse completeOrder(Long orderId);

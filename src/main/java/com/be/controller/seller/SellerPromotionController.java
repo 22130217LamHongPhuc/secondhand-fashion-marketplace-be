@@ -11,6 +11,10 @@ import org.springframework.data.domain.Page;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.format.annotation.DateTimeFormat;
+
+import java.math.BigDecimal;
+import java.time.LocalDateTime;
 
 @RestController
 @RequestMapping("/api/v1/seller/promotions")
@@ -35,9 +39,18 @@ public class SellerPromotionController {
     @GetMapping
     public ResponseEntity<Page<Promotion>> getPromotionsByShop(
             @RequestParam(required = false) String keyword,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime fromDate,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime toDate,
+            @RequestParam(required = false) BigDecimal minPrice,
+            @RequestParam(required = false) BigDecimal maxPrice,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "10") int size) {
-        return ResponseEntity.ok(shopPromotionService.getPromotionsByShop(keyword, page, size));
+        return ResponseEntity.ok(shopPromotionService.getPromotionsByShop(keyword, fromDate, toDate, minPrice, maxPrice, page, size));
+    }
+
+    @GetMapping("/{promotionId}")
+    public ResponseEntity<Promotion> getPromotionDetail(@PathVariable Long promotionId) {
+        return ResponseEntity.ok(shopPromotionService.getPromotionDetail(promotionId));
     }
 
     @PatchMapping("/{promotionId}/status")

@@ -22,6 +22,10 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.format.annotation.DateTimeFormat;
+
+import java.math.BigDecimal;
+import java.time.LocalDateTime;
 
 @RestController
 @RequestMapping("/api/seller/products")
@@ -33,10 +37,14 @@ public class SellerProductController {
     public ResponseEntity<ApiResponse<Page<ProductListResponse>>> searchProducts(
             @RequestParam(required = false) String keyword,
             @RequestParam(required = false) Boolean isActive,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime fromDate,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime toDate,
+            @RequestParam(required = false) BigDecimal minPrice,
+            @RequestParam(required = false) BigDecimal maxPrice,
             @RequestParam(defaultValue = "0") int page
     ) {
         return ResponseEntity.ok(ApiResponse.success(
-                sellerProductService.searchProducts(keyword, isActive, page),
+                sellerProductService.searchProducts(keyword, isActive, fromDate, toDate, minPrice, maxPrice, page),
                 "Lấy danh sách sản phẩm thành công"
         ));
     }
