@@ -200,6 +200,29 @@ public class SellerProductServiceImpl implements SellerProductService {
             if (product.getImages() == null) {
                 product.setImages(new ArrayList<>());
             }
+            
+            List<String> oldUrls = product.getImages().stream()
+                    .map(ProductImage::getUrl)
+                    .filter(Objects::nonNull)
+                    .toList();
+                    
+            List<String> newUrls = request.images().stream()
+                    .map(ProductImageRequest::imageUrl)
+                    .filter(Objects::nonNull)
+                    .toList();
+                    
+            List<String> deletedUrls = oldUrls.stream()
+                    .filter(u -> !newUrls.contains(u))
+                    .toList();
+                    
+            for (String deletedUrl : deletedUrls) {
+                try {
+                    imageStoreService.moveImageToTemp(deletedUrl);
+                } catch (Exception e) {
+                    log.error("Không thể đưa ảnh bị xóa về temp: {}", deletedUrl, e);
+                }
+            }
+            
             product.getImages().clear();
             product.getImages().addAll(uploadAndBuildImages(product, request.images()));
         }
