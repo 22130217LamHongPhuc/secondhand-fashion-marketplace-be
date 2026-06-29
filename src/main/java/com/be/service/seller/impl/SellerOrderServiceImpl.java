@@ -21,10 +21,15 @@ import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Sort;
+import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import com.be.repository.specification.OrderSpecification;
 
 import java.time.YearMonth;
+import java.time.LocalDateTime;
+import java.math.BigDecimal;
 
 @Service
 @RequiredArgsConstructor
@@ -35,10 +40,24 @@ public class SellerOrderServiceImpl implements SellerOrderService {
     private final AuthHelper authHelper;
 
     @Override
-    public Page<OrderListResponse> getListByPage(int page) {
+    public Page<OrderListResponse> searchOrders(OrderStatus status, String orderCode, LocalDateTime fromDate, LocalDateTime toDate, BigDecimal minPrice, BigDecimal maxPrice, String sortBy, int page) {
         Shop shop = authHelper.getCurrentSellerShop();
-        Page<Order> orders = orderRepository.getListByShopAndPage(shop.getId(), PageRequest.of(page, Constant.ORDER_SIZE));
+        Specification<Order> spec = OrderSpecification.buildFilter(shop.getId(), status, orderCode, fromDate, toDate, minPrice, maxPrice);
+        Sort sort = resolveOrderSort(sortBy);
+        Page<Order> orders = orderRepository.findAll(spec, PageRequest.of(page, Constant.ORDER_SIZE, sort));
         return orders.map(SellerOrderMapper::toListResponse);
+    }
+
+    private Sort resolveOrderSort(String sortBy) {
+        if (sortBy == null) {
+            return Sort.by("createdAt").descending();
+        }
+        return switch (sortBy) {
+            case "price_asc" -> Sort.by("subtotal").ascending();
+            case "price_desc" -> Sort.by("subtotal").descending();
+            case "oldest" -> Sort.by("createdAt").ascending();
+            default -> Sort.by("createdAt").descending();
+        };
     }
 
     @Override
@@ -52,25 +71,6 @@ public class SellerOrderServiceImpl implements SellerOrderService {
         return SellerOrderMapper.toDetailResponse(order);
     }
 
-    @Override
-    public Page<OrderListResponse> getListByStatusAndOrderCode(OrderStatus status, String orderCode, int page) {
-        Shop shop = authHelper.getCurrentSellerShop();
-        Page<Order> orders = orderRepository.getListByShopAndStatusAndOrderCode(shop.getId(), status, orderCode, PageRequest.of(page, Constant.ORDER_SIZE));
-        return orders.map(SellerOrderMapper::toListResponse);
-    }
-
-    @Override
-    public Page<OrderListResponse> getListByMonth(int year, int month, int page) {
-        Shop shop = authHelper.getCurrentSellerShop();
-        YearMonth yearMonth = YearMonth.of(year, month);
-        Page<Order> orders = orderRepository.getListByShopAndMonth(
-                shop.getId(),
-                yearMonth.atDay(1).atStartOfDay(),
-                yearMonth.plusMonths(1).atDay(1).atStartOfDay(),
-                PageRequest.of(page, Constant.ORDER_SIZE)
-        );
-        return orders.map(SellerOrderMapper::toListResponse);
-    }
 
     @Override
     @Transactional
