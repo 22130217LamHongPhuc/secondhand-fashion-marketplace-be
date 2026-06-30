@@ -28,6 +28,10 @@ import com.be.repository.OrderStatusLogRepository;
 import com.be.repository.CouponRepository;
 import com.be.repository.UserRepository;
 import com.be.repository.ProductRepository;
+import com.be.repository.UserPromotionRepository;
+import com.be.entity.UserPromotion;
+import com.be.entity.Promotion;
+import com.be.constant.PromotionStatus;
 import com.be.repository.UserAddressRepository;
 import com.be.repository.WalletRepository;
 import com.be.repository.WalletTransactionRepository;
@@ -38,6 +42,7 @@ import com.be.service.SseEmitterService;
 import com.be.service.PromotionService;
 import com.be.service.GhnShippingService;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
@@ -46,6 +51,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.stream.Collectors;
@@ -54,6 +60,7 @@ import org.springframework.scheduling.annotation.Scheduled;
 
 @Service
 @RequiredArgsConstructor
+@Slf4j
 public class CustomerOrderServiceImpl implements CustomerOrderService {
 
     private final OrderRepository orderRepository;
@@ -70,6 +77,28 @@ public class CustomerOrderServiceImpl implements CustomerOrderService {
 
     private final PromotionService promotionService;
     private final GhnShippingService ghnShippingService;
+    private final UserPromotionRepository userPromotionRepository;
+
+    private BigDecimal calculateOrderPayableAmount(Order order) {
+        BigDecimal subtotal = order.getSubtotal() != null ? order.getSubtotal() : BigDecimal.ZERO;
+        BigDecimal shippingFee = order.getShippingFee() != null ? order.getShippingFee() : BigDecimal.ZERO;
+        BigDecimal discountAmount = order.getDiscountAmount() != null ? order.getDiscountAmount() : BigDecimal.ZERO;
+
+        return subtotal.add(shippingFee).subtract(discountAmount);
+    }
+
+    private BigDecimal calculateCombinedPayableAmount(List<Order> orders) {
+        return orders.stream()
+                .map(this::calculateOrderPayableAmount)
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
+    }
+
+    private long toVNPayAmount(BigDecimal amount) {
+        return amount
+                .setScale(0, RoundingMode.HALF_UP)
+                .multiply(BigDecimal.valueOf(100))
+                .longValueExact();
+    }
 
 
     @Override
@@ -286,12 +315,12 @@ public class CustomerOrderServiceImpl implements CustomerOrderService {
             BigDecimal subtotal = BigDecimal.ZERO;
             int totalWeight = 0;
             int totalHeight = 0;
-            
+
             for (CheckoutItem ci : entry.getValue()) {
                 Product p = productCache.get(ci.getProductId());
                 BigDecimal price = p.getSalePrice() != null ? p.getSalePrice() : p.getBasePrice();
                 subtotal = subtotal.add(price.multiply(BigDecimal.valueOf(ci.getQuantity())));
-                
+
                 int qty = ci.getQuantity();
                 totalWeight += (p.getWeight() != null ? p.getWeight() : 500) * qty;
                 totalHeight += (p.getHeight() != null ? p.getHeight() : 5) * qty;
@@ -316,28 +345,75 @@ public class CustomerOrderServiceImpl implements CustomerOrderService {
         }
 
         Coupon appliedCoupon = null;
+        UserPromotion appliedUserPromotion = null;
+        Promotion appliedPromotion = null;
         BigDecimal couponDiscount = BigDecimal.ZERO;
         BigDecimal couponEligibleSubtotal = itemsSubtotal;
         if (request.getCouponCode() != null && !request.getCouponCode().isBlank()) {
             String normalizedCode = request.getCouponCode().trim().toUpperCase();
-            appliedCoupon = couponRepository.findByCodeForUpdate(normalizedCode)
-                    .orElseThrow(() -> new IllegalArgumentException("Mã giảm giá không tồn tại"));
+            java.util.Optional<Coupon> couponOpt = couponRepository.findByCodeForUpdate(normalizedCode);
+            if (couponOpt.isPresent()) {
+                appliedCoupon = couponOpt.get();
+                if (appliedCoupon.getShop() != null) {
+                    Long couponShopId = appliedCoupon.getShop().getId();
+                    couponEligibleSubtotal = subtotalByShop.entrySet().stream()
+                            .filter(entry -> entry.getKey().getId().equals(couponShopId))
+                            .map(java.util.Map.Entry::getValue)
+                            .findFirst()
+                            .orElseThrow(() -> new IllegalArgumentException("Mã giảm giá không áp dụng cho các sản phẩm đã chọn"));
+                }
 
-            if (appliedCoupon.getShop() != null) {
-                Long couponShopId = appliedCoupon.getShop().getId();
-                couponEligibleSubtotal = subtotalByShop.entrySet().stream()
-                        .filter(entry -> entry.getKey().getId().equals(couponShopId))
-                        .map(java.util.Map.Entry::getValue)
-                        .findFirst()
-                        .orElseThrow(() -> new IllegalArgumentException("Mã giảm giá không áp dụng cho các sản phẩm đã chọn"));
-            }
+                com.be.dto.response.CouponValidationResponse validation =
+                        promotionService.validateCoupon(normalizedCode, couponEligibleSubtotal);
+                if (!validation.isValid()) {
+                    throw new IllegalArgumentException(validation.getMessage());
+                }
+                couponDiscount = validation.getDiscountAmount();
+            } else {
+                List<UserPromotion> userPromos = userPromotionRepository.findByUserIdAndPromotionCode(customer.getId(), normalizedCode);
+                if (userPromos.isEmpty()) {
+                    throw new IllegalArgumentException("Mã giảm giá không tồn tại hoặc chưa được lưu vào ví");
+                }
+                for (UserPromotion up : userPromos) {
+                    if (subtotalByShop.containsKey(up.getPromotion().getShop())) {
+                        appliedUserPromotion = up;
+                        appliedPromotion = up.getPromotion();
+                        break;
+                    }
+                }
+                if (appliedUserPromotion == null) {
+                    throw new IllegalArgumentException("Mã giảm giá không áp dụng cho bất kỳ tiệm nào trong đơn hàng");
+                }
 
-            com.be.dto.response.CouponValidationResponse validation =
-                    promotionService.validateCoupon(normalizedCode, couponEligibleSubtotal);
-            if (!validation.isValid()) {
-                throw new IllegalArgumentException(validation.getMessage());
+                if (appliedPromotion.getStatus() != PromotionStatus.ACTIVE) {
+                    throw new IllegalArgumentException("Khuyến mãi hiện không hoạt động");
+                }
+                LocalDateTime nowTime = LocalDateTime.now();
+                if (nowTime.isBefore(appliedPromotion.getStartDate()) || nowTime.isAfter(appliedPromotion.getEndDate())) {
+                    throw new IllegalArgumentException("Khuyến mãi đã hết hạn sử dụng");
+                }
+                if (appliedUserPromotion.getUsageCount() >= 1) {
+                    throw new IllegalArgumentException("Bạn đã sử dụng mã giảm giá này rồi");
+                }
+
+                couponEligibleSubtotal = subtotalByShop.get(appliedPromotion.getShop());
+                if (appliedPromotion.getMinOrderValue() != null && couponEligibleSubtotal.compareTo(appliedPromotion.getMinOrderValue()) < 0) {
+                    throw new IllegalArgumentException("Đơn hàng của tiệm chưa đạt giá trị tối thiểu " + appliedPromotion.getMinOrderValue() + "đ");
+                }
+
+                if (appliedPromotion.getDiscountType() == com.be.constant.DiscountType.PERCENTAGE) {
+                    couponDiscount = couponEligibleSubtotal.multiply(appliedPromotion.getDiscountValue()).divide(new BigDecimal("100"), 2, java.math.RoundingMode.HALF_UP);
+                    if (appliedPromotion.getMaxDiscountAmount() != null && couponDiscount.compareTo(appliedPromotion.getMaxDiscountAmount()) > 0) {
+                        couponDiscount = appliedPromotion.getMaxDiscountAmount();
+                    }
+                } else {
+                    couponDiscount = appliedPromotion.getDiscountValue();
+                }
+
+                if (couponDiscount.compareTo(couponEligibleSubtotal) > 0) {
+                    couponDiscount = couponEligibleSubtotal;
+                }
             }
-            couponDiscount = validation.getDiscountAmount();
         }
 
         BigDecimal totalCheckoutCost = itemsSubtotal
@@ -385,13 +461,7 @@ public class CustomerOrderServiceImpl implements CustomerOrderService {
                 BigDecimal itemSubtotal = price.multiply(BigDecimal.valueOf(ci.getQuantity()));
                 subtotal = subtotal.add(itemSubtotal);
 
-                // Order is being created as PENDING; reserve stock in the same transaction.
-                p.setStockQuantity(p.getStockQuantity() - ci.getQuantity());
-                if (p.getStockQuantity() <= 0) {
-                    p.setIsActive(false);
-                }
-                productRepository.save(p);
-
+                // Order is b
                 try {
                     java.util.Map<String, Object> eventData = new java.util.HashMap<>();
                     eventData.put("productId", p.getId());
@@ -429,11 +499,17 @@ public class CustomerOrderServiceImpl implements CustomerOrderService {
                     remainingDiscount = remainingDiscount.subtract(orderDiscount);
                     remainingEligibleSubtotal = remainingEligibleSubtotal.subtract(subtotal);
                 }
+            } else if (appliedPromotion != null && remainingDiscount.signum() > 0) {
+                if (appliedPromotion.getShop().getId().equals(shop.getId())) {
+                    orderDiscount = remainingDiscount;
+                    remainingDiscount = BigDecimal.ZERO;
+                }
             }
 
             order.setSubtotal(subtotal);
             order.setDiscountAmount(orderDiscount);
             order.setCoupon(orderDiscount.signum() > 0 ? appliedCoupon : null);
+            order.setPromotion(orderDiscount.signum() > 0 ? appliedPromotion : null);
             order.setItems(orderItems);
 
             // Add OrderStatusLog
@@ -455,17 +531,22 @@ public class CustomerOrderServiceImpl implements CustomerOrderService {
             int usedCount = appliedCoupon.getUsedCount() == null ? 0 : appliedCoupon.getUsedCount();
             appliedCoupon.setUsedCount(usedCount + 1);
             couponRepository.save(appliedCoupon);
+        } else if (appliedUserPromotion != null) {
+            appliedUserPromotion.setUsageCount(appliedUserPromotion.getUsageCount() + 1);
+            userPromotionRepository.save(appliedUserPromotion);
         }
 
         // 6. Generate VNPay URL if payment method is WALLET
         String paymentUrl = null;
         if (paymentMethod == PaymentMethod.WALLET && paymentRef != null) {
             try {
+                BigDecimal vnpayTotal = calculateCombinedPayableAmount(createdOrders);
+
                 java.util.Map<String, String> vnp_Params = new java.util.HashMap<>();
                 vnp_Params.put("vnp_Version", "2.1.0");
                 vnp_Params.put("vnp_Command", "pay");
                 vnp_Params.put("vnp_TmnCode", com.be.utils.VNPayUtil.vnp_TmnCode);
-                long amountInVndLong = totalCheckoutCost.multiply(new BigDecimal("100")).longValue();
+                long amountInVndLong = toVNPayAmount(vnpayTotal);
                 vnp_Params.put("vnp_Amount", String.valueOf(amountInVndLong));
                 vnp_Params.put("vnp_CurrCode", "VND");
                 vnp_Params.put("vnp_TxnRef", paymentRef);
@@ -491,9 +572,7 @@ public class CustomerOrderServiceImpl implements CustomerOrderService {
                             hashData.append("&");
                             query.append("&");
                         }
-                        // Theo chuẩn chính thức VNPAY: hashData dùng URLEncoder.encode(US_ASCII)
-                        // Space -> '+', ký tự đặc biệt -> %XX
-                        String encodedValue = java.net.URLEncoder.encode(fieldValue, java.nio.charset.StandardCharsets.US_ASCII);
+                        String encodedValue = java.net.URLEncoder.encode(fieldValue, java.nio.charset.StandardCharsets.UTF_8);
                         hashData.append(fieldName).append("=").append(encodedValue);
                         query.append(fieldName).append("=").append(encodedValue);
 
@@ -524,25 +603,26 @@ public class CustomerOrderServiceImpl implements CustomerOrderService {
         if (paymentRef == null || paymentRef.trim().isEmpty()) {
             throw new IllegalArgumentException("InvalidPaymentReference");
         }
-
         List<Order> orders = orderRepository.findByPaymentRef(paymentRef);
         if (orders.isEmpty()) {
             throw new IllegalArgumentException("OrderNotFound");
         }
 
         // 1. Calculate combined total cost of all orders under this payment reference
-        BigDecimal combinedTotal = BigDecimal.ZERO;
-        for (Order order : orders) {
-            BigDecimal orderTotal = order.getSubtotal()
-                    .add(order.getShippingFee())
-                    .subtract(order.getDiscountAmount() != null ? order.getDiscountAmount() : BigDecimal.ZERO);
-            combinedTotal = combinedTotal.add(orderTotal);
-        }
+        BigDecimal combinedTotal = calculateCombinedPayableAmount(orders);
 
-        // 2. Convert to VND cents and verify
-        long expectedAmountCents = combinedTotal.multiply(new BigDecimal("100")).longValue();
-        long receivedAmountCents = Long.parseLong(vnpAmountStr);
-        if (expectedAmountCents != receivedAmountCents) {
+        // 2. Convert to VNPAY amount format and verify.
+        // VNPAY expects whole VND multiplied by 100; round before multiplying.
+        long expectedVNPayAmount = toVNPayAmount(combinedTotal);
+        long receivedVNPayAmount = Long.parseLong(vnpAmountStr);
+        if (expectedVNPayAmount != receivedVNPayAmount) {
+            log.warn(
+                    "[VNPay] Amount mismatch paymentRef={}, expected={}, received={}, combinedTotal={}",
+                    paymentRef,
+                    expectedVNPayAmount,
+                    receivedVNPayAmount,
+                    combinedTotal
+            );
             throw new IllegalArgumentException("AmountMismatch");
         }
 
@@ -621,8 +701,6 @@ public class CustomerOrderServiceImpl implements CustomerOrderService {
         }
 
         String newPaymentRef = "PAY-" + System.currentTimeMillis() + "-" + (int)(Math.random() * 900 + 100);
-        BigDecimal combinedTotal = BigDecimal.ZERO;
-
         for (Order order : orders) {
             if (order.getPaymentStatus() == PaymentStatus.PAID) {
                 throw new IllegalStateException("Một trong các đơn hàng thuộc giao dịch này đã được thanh toán");
@@ -632,19 +710,16 @@ public class CustomerOrderServiceImpl implements CustomerOrderService {
             }
             order.setPaymentRef(newPaymentRef);
             orderRepository.save(order);
-
-            BigDecimal orderTotal = order.getSubtotal()
-                    .add(order.getShippingFee())
-                    .subtract(order.getDiscountAmount() != null ? order.getDiscountAmount() : BigDecimal.ZERO);
-            combinedTotal = combinedTotal.add(orderTotal);
         }
+
+        BigDecimal combinedTotal = calculateCombinedPayableAmount(orders);
 
         try {
             java.util.Map<String, String> vnp_Params = new java.util.HashMap<>();
             vnp_Params.put("vnp_Version", "2.1.0");
             vnp_Params.put("vnp_Command", "pay");
             vnp_Params.put("vnp_TmnCode", com.be.utils.VNPayUtil.vnp_TmnCode);
-            long amountInVndLong = combinedTotal.multiply(new BigDecimal("100")).longValue();
+            long amountInVndLong = toVNPayAmount(combinedTotal);
             vnp_Params.put("vnp_Amount", String.valueOf(amountInVndLong));
             vnp_Params.put("vnp_CurrCode", "VND");
             vnp_Params.put("vnp_TxnRef", newPaymentRef);

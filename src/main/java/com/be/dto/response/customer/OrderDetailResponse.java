@@ -27,6 +27,8 @@ public record OrderDetailResponse(
 
         BigDecimal subtotal,
         BigDecimal shippingFee,
+        BigDecimal discountAmount,
+        CouponInfo couponInfo,
         BigDecimal total,
 
         LocalDateTime createdAt,
@@ -63,10 +65,21 @@ public record OrderDetailResponse(
             Boolean reviewed
     ) {}
 
+    /**
+     * Thông tin mã giảm giá đã áp dụng cho đơn hàng.
+     * source: "ADMIN_COUPON", "SHOP_COUPON", hoặc "SHOP_VOUCHER"
+     */
+    public record CouponInfo(
+            String code,
+            String name,
+            String source
+    ) {}
+
     public static OrderDetailResponse fromEntity(Order order) {
+        BigDecimal discount = order.getDiscountAmount() != null ? order.getDiscountAmount() : BigDecimal.ZERO;
         BigDecimal total = order.getSubtotal()
                 .add(order.getShippingFee())
-                .subtract(order.getDiscountAmount() != null ? order.getDiscountAmount() : BigDecimal.ZERO);
+                .subtract(discount);
 
         ShopInfo shopInfo = null;
         if (order.getShop() != null) {
@@ -131,6 +144,19 @@ public record OrderDetailResponse(
                     .collect(Collectors.toList());
         }
 
+        // Build coupon info
+        CouponInfo couponInfo = null;
+        if (discount.signum() > 0) {
+            if (order.getCoupon() != null) {
+                var coupon = order.getCoupon();
+                String source = coupon.getShop() != null ? "SHOP_COUPON" : "ADMIN_COUPON";
+                couponInfo = new CouponInfo(coupon.getCode(), coupon.getName(), source);
+            } else if (order.getPromotion() != null) {
+                var promo = order.getPromotion();
+                couponInfo = new CouponInfo(promo.getCode(), promo.getName(), "SHOP_VOUCHER");
+            }
+        }
+
         return new OrderDetailResponse(
                 order.getId(),
                 order.getOrderCode(),
@@ -143,6 +169,8 @@ public record OrderDetailResponse(
                 itemInfos,
                 order.getSubtotal(),
                 order.getShippingFee(),
+                discount,
+                couponInfo,
                 total,
                 order.getCreatedAt(),
                 order.getUpdatedAt(),

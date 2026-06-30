@@ -68,6 +68,9 @@ public class Order {
     @JoinColumn(name = "coupon_id", nullable = true)
     private Coupon coupon;
 
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "promotion_id", nullable = true)
+    private Promotion promotion;
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)

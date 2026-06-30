@@ -30,6 +30,9 @@ public class SellerCustomerPromotionController {
     public ResponseEntity<UserPromotion> claimPromotion(
             @AuthenticationPrincipal User user,
             @PathVariable Long promotionId) {
+        if (user == null) {
+            throw new org.springframework.security.authentication.InsufficientAuthenticationException("Yêu cầu đăng nhập để thực hiện lưu mã giảm giá");
+        }
         return new ResponseEntity<>(customerPromotionService.claimPromotion(user, promotionId), HttpStatus.CREATED);
     }
 
@@ -38,6 +41,9 @@ public class SellerCustomerPromotionController {
             @AuthenticationPrincipal User user,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "10") int size) {
+        if (user == null) {
+            throw new org.springframework.security.authentication.InsufficientAuthenticationException("Yêu cầu đăng nhập để xem ví voucher");
+        }
         return ResponseEntity.ok(customerPromotionService.getMyWallet(user, page, size));
     }
 }

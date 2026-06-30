@@ -200,6 +200,7 @@ CREATE TABLE `orders` (
   `subtotal` decimal(15,2) NOT NULL,
   `discount_amount` decimal(15,2) NOT NULL DEFAULT '0.00',
   `coupon_id` bigint DEFAULT NULL,
+  `promotion_id` bigint DEFAULT NULL,
   `created_at` datetime(6) NOT NULL,
   `customer_id` bigint NOT NULL,
   `delivered_at` datetime(6) DEFAULT NULL,
@@ -220,11 +221,13 @@ CREATE TABLE `orders` (
   KEY `idx_orders_status` (`status`),
   KEY `idx_orders_created` (`created_at`),
   KEY `idx_orders_coupon` (`coupon_id`),
+  KEY `idx_orders_promotion` (`promotion_id`),
   KEY `FKq2dfcmpxmg3lqseeacd48f12k` (`shipping_address_id`),
   CONSTRAINT `FK21gttsw5evi5bbsvleui69d7r` FOREIGN KEY (`shop_id`) REFERENCES `shops` (`id`),
   CONSTRAINT `FKq2dfcmpxmg3lqseeacd48f12k` FOREIGN KEY (`shipping_address_id`) REFERENCES `user_addresses` (`id`),
   CONSTRAINT `FKsjfs85qf6vmcurlx43cnc16gy` FOREIGN KEY (`customer_id`) REFERENCES `users` (`id`),
-  CONSTRAINT `fk_orders_coupon` FOREIGN KEY (`coupon_id`) REFERENCES `coupons` (`id`)
+  CONSTRAINT `fk_orders_coupon` FOREIGN KEY (`coupon_id`) REFERENCES `coupons` (`id`),
+  CONSTRAINT `fk_orders_promotion` FOREIGN KEY (`promotion_id`) REFERENCES `promotions` (`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 

@@ -23,34 +23,66 @@ public class CustomerPromotionServiceImpl implements CustomerPromotionService {
     private final UserPromotionRepository userPromotionRepository;
     @Override
     public Page<Promotion> getAvailablePromotions(Long shopId, int page, int size) {
-
-        return promotionRepository.findByShop_IdAndStatusAndStartDateBeforeAndEndDateAfter(shopId,
-                PromotionStatus.ACTIVE, LocalDateTime.now(), LocalDateTime.now(), PageRequest.of(page, size));
+        return promotionRepository.findAvailablePromotions(shopId,
+                PromotionStatus.ACTIVE, LocalDateTime.now(), PageRequest.of(page, size));
     }
 
     @Override
     @Transactional
     public UserPromotion claimPromotion(User user, Long promotionId) {
-        try {
-            Promotion promotion = promotionRepository.findById(promotionId)
-                    .orElseThrow();
-            UserPromotion userPromotion = UserPromotion.builder()
-                    .user(user)
-                    .promotion(promotion)
-                    .claimedAt(LocalDateTime.now())
-                    .build();
-            promotion.setUsedQuantity(promotion.getUsedQuantity() + 1);
-            userPromotionRepository.save(userPromotion);
-            promotionRepository.save(promotion);
-            return userPromotion;
-        }catch (Exception e) {
-            throw new RuntimeException("Loi khi claim ma giam gia");
+        if (user == null) {
+            throw new org.springframework.security.authentication.InsufficientAuthenticationException("Yêu cầu đăng nhập để lưu mã giảm giá");
         }
+
+        Promotion promotion = promotionRepository.findById(promotionId)
+                .orElseThrow(() -> new EntityNotFoundException("Không tìm thấy chương trình khuyến mãi"));
+
+        // 1. Kiểm tra trạng thái hoạt động
+        if (promotion.getStatus() != PromotionStatus.ACTIVE) {
+            throw new IllegalStateException("Khuyến mãi hiện không hoạt động");
+        }
+
+        // 2. Kiểm tra thời gian hiệu lực
+        LocalDateTime now = LocalDateTime.now();
+        if (now.isBefore(promotion.getStartDate())) {
+            throw new IllegalStateException("Khuyến mãi chưa bắt đầu");
+        }
+        if (now.isAfter(promotion.getEndDate())) {
+            throw new IllegalStateException("Khuyến mãi đã hết hạn");
+        }
+
+        // 3. Kiểm tra số lượng còn lại
+        if (promotion.getQuantity() != null && promotion.getUsedQuantity() != null
+                && promotion.getUsedQuantity() >= promotion.getQuantity()) {
+            throw new IllegalStateException("Mã giảm giá đã hết lượt sử dụng");
+        }
+
+        // 4. Kiểm tra xem người dùng đã claim chưa
+        boolean alreadyClaimed = userPromotionRepository.existsByUser_IdAndPromotion_Id(user.getId(), promotionId);
+        if (alreadyClaimed) {
+            throw new IllegalStateException("Bạn đã lưu mã giảm giá này rồi");
+        }
+
+        UserPromotion userPromotion = UserPromotion.builder()
+                .user(user)
+                .promotion(promotion)
+                .usageCount(0)
+                .claimedAt(LocalDateTime.now())
+                .build();
+
+        // Tăng usedQuantity của promotion
+        int newUsedQuantity = promotion.getUsedQuantity() == null ? 1 : promotion.getUsedQuantity() + 1;
+        promotion.setUsedQuantity(newUsedQuantity);
+
+        promotionRepository.save(promotion);
+        return userPromotionRepository.save(userPromotion);
     }
 
     @Override
     public Page<UserPromotion> getMyWallet(User user, int page, int size) {
-        return userPromotionRepository.findValidAndAvailablePromotionsByUserId(user.getId()
-                , PromotionStatus.ACTIVE, LocalDateTime.now(), PageRequest.of(page, size));
+        if (user == null) {
+            throw new org.springframework.security.authentication.InsufficientAuthenticationException("Yêu cầu đăng nhập để xem ví voucher");
+        }
+        return userPromotionRepository.findByUser_Id(user.getId(), PageRequest.of(page, size));
     }
 }

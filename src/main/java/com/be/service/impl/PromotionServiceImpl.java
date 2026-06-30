@@ -25,6 +25,7 @@ public class PromotionServiceImpl implements PromotionService {
     private final CampaignProductRepository campaignProductRepository;
     private final ProductRepository productRepository;
     private final ShopRepository shopRepository;
+    private final PromotionRepository promotionRepository;
 
     // ==========================================
     // COUPON MANAGEMENT
@@ -290,9 +291,62 @@ public class PromotionServiceImpl implements PromotionService {
     public com.be.dto.response.CouponValidationResponse validateCoupon(String code, java.math.BigDecimal subtotal) {
         java.util.Optional<Coupon> couponOpt = couponRepository.findByCode(code.toUpperCase().trim());
         if (couponOpt.isEmpty()) {
+            java.util.List<Promotion> promotions = promotionRepository.findByCode(code.toUpperCase().trim());
+            if (promotions.isEmpty()) {
+                return com.be.dto.response.CouponValidationResponse.builder()
+                        .isValid(false)
+                        .message("Mã giảm giá không tồn tại")
+                        .build();
+            }
+
+            // Tìm promotion đang hoạt động và trong hạn
+            Promotion promotion = null;
+            LocalDateTime now = LocalDateTime.now();
+            for (Promotion p : promotions) {
+                if (p.getStatus() == com.be.constant.PromotionStatus.ACTIVE && !now.isBefore(p.getStartDate()) && !now.isAfter(p.getEndDate())) {
+                    promotion = p;
+                    break;
+                }
+            }
+
+            if (promotion == null) {
+                return com.be.dto.response.CouponValidationResponse.builder()
+                        .isValid(false)
+                        .message("Mã giảm giá đã hết hạn hoặc không hoạt động")
+                        .build();
+            }
+
+            if (promotion.getMinOrderValue() != null && subtotal.compareTo(promotion.getMinOrderValue()) < 0) {
+                return com.be.dto.response.CouponValidationResponse.builder()
+                        .isValid(false)
+                        .message("Giá trị đơn hàng chưa đạt tối thiểu (yêu cầu từ " + promotion.getMinOrderValue() + "đ)")
+                        .build();
+            }
+
+            java.math.BigDecimal discountAmount = java.math.BigDecimal.ZERO;
+            if (promotion.getDiscountType() == com.be.constant.DiscountType.PERCENTAGE) {
+                discountAmount = subtotal.multiply(promotion.getDiscountValue()).divide(java.math.BigDecimal.valueOf(100), 2, java.math.RoundingMode.HALF_UP);
+                if (promotion.getMaxDiscountAmount() != null && discountAmount.compareTo(promotion.getMaxDiscountAmount()) > 0) {
+                    discountAmount = promotion.getMaxDiscountAmount();
+                }
+            } else {
+                discountAmount = promotion.getDiscountValue();
+            }
+
+            if (discountAmount.compareTo(subtotal) > 0) {
+                discountAmount = subtotal;
+            }
+
+            com.be.common.enums.DiscountType mappedType = (promotion.getDiscountType() == com.be.constant.DiscountType.PERCENTAGE)
+                    ? com.be.common.enums.DiscountType.PERCENTAGE
+                    : com.be.common.enums.DiscountType.FIXED_AMOUNT;
+
             return com.be.dto.response.CouponValidationResponse.builder()
-                    .isValid(false)
-                    .message("Mã giảm giá không tồn tại")
+                    .isValid(true)
+                    .discountAmount(discountAmount)
+                    .discountType(mappedType)
+                    .discountValue(promotion.getDiscountValue())
+                    .message("Áp dụng mã giảm giá thành công")
                     .build();
         }
 
