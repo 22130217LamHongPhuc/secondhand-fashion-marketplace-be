@@ -10,7 +10,9 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
 import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.jpa.repository.QueryHints;
 import org.springframework.data.repository.query.Param;
+import jakarta.persistence.QueryHint;
 import org.springframework.stereotype.Repository;
 
 import java.math.BigDecimal;
@@ -20,6 +22,13 @@ import java.util.Optional;
 
 @Repository
 public interface OrderRepository extends JpaRepository<Order, Long>, JpaSpecificationExecutor<Order> {
+
+    long countByShopId(Long shopId);
+
+    @QueryHints(value = @QueryHint(name = "org.hibernate.fetchSize", value = "1000"))
+    @Query("SELECT o FROM Order o LEFT JOIN FETCH o.customer WHERE o.shop.id = :shopId ORDER BY o.createdAt DESC")
+    java.util.stream.Stream<Order> streamAllByShopIdOrderByCreatedAtDesc(@Param("shopId") Long shopId);
+
     @Query("SELECT o FROM Order o WHERE o.status = :status AND o.paymentStatus = :paymentStatus AND o.paymentMethod = :paymentMethod AND o.createdAt < :limit")
     List<Order> findExpiredOrders(
             @Param("status") OrderStatus status,

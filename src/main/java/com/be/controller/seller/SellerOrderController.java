@@ -5,12 +5,16 @@ import com.be.dto.response.ApiResponse;
 import com.be.dto.response.seller.OrderListResponse;
 import com.be.dto.response.seller.OrderDetailResponse;
 import com.be.dto.response.seller.OrderActionResponse;
+import com.be.entity.Shop;
+import com.be.security.AuthHelper;
+import com.be.service.OrderExportService;
 import com.be.service.seller.SellerOrderService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
@@ -26,6 +30,8 @@ import java.math.BigDecimal;
 @RequiredArgsConstructor
 public class SellerOrderController {
     private final SellerOrderService sellerOrderService;
+    private final OrderExportService orderExportService;
+    private final AuthHelper authHelper;
 
     @GetMapping("/{id}")
     public ResponseEntity<ApiResponse<OrderDetailResponse>> getDetails(@PathVariable Long id) {
@@ -83,7 +89,17 @@ public class SellerOrderController {
     ) {
         return ResponseEntity.ok(ApiResponse.success(
                 sellerOrderService.cancelOrder(id, reason),
-                "Hủy đơn hàng thành công"
+                "Đã hủy đơn hàng thành công"
         ));
+    }
+
+    @PostMapping("/export")
+    public ResponseEntity<ApiResponse<Void>> exportOrders() {
+        Shop shop = authHelper.getCurrentSellerShop();
+        String subscriberId = authHelper.getCurrentUser().getId().toString();
+        orderExportService.exportOrdersAsync(shop.getId(), subscriberId);
+        return ResponseEntity.accepted().body(
+                ApiResponse.success(null, "Đang xử lý export đơn hàng. Vui lòng theo dõi tiến trình.")
+        );
     }
 }

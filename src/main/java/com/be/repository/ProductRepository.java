@@ -7,7 +7,9 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
 import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.jpa.repository.QueryHints;
 import org.springframework.data.repository.query.Param;
+import jakarta.persistence.QueryHint;
 import org.springframework.stereotype.Repository;
 
 import java.util.List;
@@ -26,6 +28,14 @@ public interface ProductRepository extends JpaRepository<Product, Long>, JpaSpec
             @Param("isActive") Boolean isActive,
             Pageable pageable
     );
+
+    long countByShopId(Long shopId);
+
+    @QueryHints(value = @QueryHint(name = "org.hibernate.fetchSize", value = "1000"))
+    @Query("SELECT p FROM Product p WHERE p.shop.id = :shopId ORDER BY p.createdAt DESC")
+    java.util.stream.Stream<Product> streamAllByShopIdOrderByCreatedAtDesc(@Param("shopId") Long shopId);
+
+    List<Product> findAllByShopIdOrderByCreatedAtDesc(Long shopId);
 
     @Query("""
             SELECT p FROM Product p
