@@ -66,6 +66,7 @@ public class SellerSeeder implements CommandLineRunner {
     private final ComplaintRepository complaintRepository;
     private final RoleRepository roleRepository;
     private final UserRoleMappingRepository userRoleMappingRepository;
+    private final com.be.service.GhnShippingService ghnShippingService;
 
     private final PasswordEncoder encoder = new BCryptPasswordEncoder();
 
@@ -408,20 +409,46 @@ public class SellerSeeder implements CommandLineRunner {
 
     private UserAddress seedCustomerAddress(User customer) {
         return userAddressRepository.findByUserIdAndIsDefaultTrue(customer.getId())
-                .orElseGet(() -> userAddressRepository.save(UserAddress.builder()
+                .map(existing -> {
+                    if (existing.getDistrictId() == null || existing.getWardCode() == null) {
+                        UserAddress enriched = ghnShippingService.enrichAddressCodes(existing);
+                        return userAddressRepository.save(enriched);
+                    }
+                    return existing;
+                })
+                .orElseGet(() -> {
+                    UserAddress address = UserAddress.builder()
                         .user(customer)
                         .fullName(customer.getFullName())
                         .phone(customer.getPhone())
-                        .province("Ho Chi Minh")
-                        .district("Quan 1")
-                        .ward("Ben Nghe")
+                        .province("Hồ Chí Minh")
+                        .district("Quận 1")
+                        .ward("Phường Bến Nghé")
                         .addressDetail("12 Nguyen Hue")
                         .isDefault(true)
-                        .build()));
+                        .build();
+                    
+                    // Enrich with GHN codes
+                    address = ghnShippingService.enrichAddressCodes(address);
+                    
+                    return userAddressRepository.save(address);
+                });
     }
 
     private Shop seedShop(User seller) {
         return shopRepository.findBySlug(SHOP_SLUG)
+                .map(existing -> {
+                    if (existing.getDistrictId() == null || existing.getWardCode() == null) {
+                        existing.setProvinceId(202);
+                        existing.setProvinceName("Hồ Chí Minh");
+                        existing.setDistrictId(1442);
+                        existing.setDistrictName("Quận 1");
+                        existing.setWardCode("20109");
+                        existing.setWardName("Phường Bến Nghé");
+                        return shopRepository.save(existing);
+                    }
+                    return existing;
+                })
                 .orElseGet(() -> shopRepository.save(Shop.builder()
                         .seller(seller)
                         .name("Seller Demo Shop")
@@ -433,6 +460,13 @@ public class SellerSeeder implements CommandLineRunner {
                         .totalReviews(24)
                         .isActive(true)
                         .isVerified(true)
+                        .provinceId(202)
+                        .provinceName("Hồ Chí Minh")
+                        .districtId(1442)
+                        .districtName("Quận 1")
+                        .wardCode("20109") // Ben Nghe
+                        .wardName("Phường Bến Nghé")
+                        .addressDetail("123 Duong Demo")
                         .build()));
     }
 
