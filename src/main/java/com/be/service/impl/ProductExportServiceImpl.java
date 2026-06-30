@@ -68,7 +68,18 @@ public class ProductExportServiceImpl implements ProductExportService {
                 return;
             }
 
-            tempFile = File.createTempFile("products_export_shop_" + shopId + "_", ".xlsx");
+            File exportDir = new File("export_temp");
+            if (!exportDir.exists()) {
+                exportDir.mkdirs();
+            } else {
+                File[] oldFiles = exportDir.listFiles((dir, name) -> name.startsWith("products_export_shop_" + shopId + "_"));
+                if (oldFiles != null) {
+                    for (File f : oldFiles) {
+                        f.delete();
+                    }
+                }
+            }
+            tempFile = new File(exportDir, "products_export_shop_" + shopId + "_" + System.currentTimeMillis() + ".xlsx");
             workbook = new SXSSFWorkbook(100); // Giữ 100 dòng trong RAM, sau đó xả xuống đĩa
 
             Sheet sheet = workbook.createSheet("Products");

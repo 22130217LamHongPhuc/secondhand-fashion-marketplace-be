@@ -71,7 +71,18 @@ public class OrderExportServiceImpl implements OrderExportService {
                 return;
             }
 
-            tempFile = File.createTempFile("orders_export_shop_" + shopId + "_", ".xlsx");
+            File exportDir = new File("export_temp");
+            if (!exportDir.exists()) {
+                exportDir.mkdirs();
+            } else {
+                File[] oldFiles = exportDir.listFiles((dir, name) -> name.startsWith("orders_export_shop_" + shopId + "_"));
+                if (oldFiles != null) {
+                    for (File f : oldFiles) {
+                        f.delete();
+                    }
+                }
+            }
+            tempFile = new File(exportDir, "orders_export_shop_" + shopId + "_" + System.currentTimeMillis() + ".xlsx");
             workbook = new SXSSFWorkbook(100);
 
             Sheet sheet = workbook.createSheet("Orders");
