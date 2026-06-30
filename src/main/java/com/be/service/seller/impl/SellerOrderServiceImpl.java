@@ -16,6 +16,7 @@ import com.be.repository.OrderRepository;
 import com.be.repository.OrderStatusLogRepository;
 import com.be.repository.ProductRepository;
 import com.be.security.AuthHelper;
+import com.be.service.GhnShippingService;
 import com.be.service.seller.SellerOrderService;
 import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
@@ -38,6 +39,7 @@ public class SellerOrderServiceImpl implements SellerOrderService {
     private final OrderStatusLogRepository orderStatusLogRepository;
     private final ProductRepository productRepository;
     private final AuthHelper authHelper;
+    private final GhnShippingService ghnShippingService;
 
     @Override
     public Page<OrderListResponse> searchOrders(OrderStatus status, String orderCode, LocalDateTime fromDate, LocalDateTime toDate, BigDecimal minPrice, BigDecimal maxPrice, String sortBy, int page) {
@@ -82,15 +84,44 @@ public class SellerOrderServiceImpl implements SellerOrderService {
     @Override
     @Transactional
     public OrderActionResponse startDelivery(Long orderId) {
-        Order order = updateOrderStatus(orderId, OrderStatus.SHIPPING, "Đơn hàng đang được giao");
-        return SellerOrderMapper.toActionResponse(order);
+        Order order = orderRepository.findById(orderId)
+                .orElseThrow(() -> new IllegalArgumentException("Không tìm thấy đơn hàng với id: " + orderId));
+        
+        Shop shop = authHelper.getCurrentSellerShop();
+        if (!order.getShop().getId().equals(shop.getId())) {
+            throw new IllegalStateException("Bạn không có quyền cập nhật đơn hàng này");
+        }
+        
+        if (order.getStatus() != OrderStatus.CONFIRMED) {
+            throw new IllegalStateException("Trạng thái chuyển đổi không hợp lệ. Chỉ có thể giao đơn hàng đã xác nhận.");
+        }
+
+        // Gọi GHN API tạo đơn giao hàng
+        GhnShippingService.CreateOrderResult ghnResult = ghnShippingService.createShippingOrder(order);
+        
+        order.setGhnOrderCode(ghnResult.orderCode());
+        order.setExpectedDeliveryTime(ghnResult.expectedDeliveryTime());
+        order.setGhnTotalFee(ghnResult.totalFee());
+        orderRepository.save(order); // Lưu trước thông tin để updateOrderStatus có thể dùng instance này
+        
+        Order savedOrder = updateOrderStatus(orderId, OrderStatus.SHIPPING, "Đơn hàng đang được giao (Mã GHN: " + ghnResult.orderCode() + ")");
+        
+        // Ensure the GHN fields are included in the mapper by passing the updated instance if updateOrderStatus fetched a stale one (though 1st level cache prevents this)
+        savedOrder.setGhnOrderCode(ghnResult.orderCode());
+        
+        return SellerOrderMapper.toActionResponse(savedOrder);
     }
 
     @Override
     @Transactional
     public OrderActionResponse completeOrder(Long orderId) {
-        Order order = updateOrderStatus(orderId, OrderStatus.DONE, "Đơn hàng hoàn thành");
-        return SellerOrderMapper.toActionResponse(order);
+        Order order = orderRepository.findById(orderId)
+                .orElseThrow(() -> new IllegalArgumentException("Không tìm thấy đơn hàng với id: " + orderId));
+        order.setDeliveredAt(LocalDateTime.now());
+        orderRepository.save(order);
+        
+        Order savedOrder = updateOrderStatus(orderId, OrderStatus.DONE, "Đơn hàng hoàn thành");
+        return SellerOrderMapper.toActionResponse(savedOrder);
     }
 
     @Override

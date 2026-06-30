@@ -93,6 +93,9 @@ public class SellerOrderMapper {
             order.getPaidAt() != null ? order.getPaidAt().format(DATE_FORMATTER) : null,
             order.getDeliveredAt() != null ? order.getDeliveredAt().format(DATE_FORMATTER) : null,
             order.getCreatedAt() != null ? order.getCreatedAt().format(DATE_FORMATTER) : null,
+            order.getGhnOrderCode(),
+            order.getExpectedDeliveryTime() != null ? order.getExpectedDeliveryTime().format(DATE_FORMATTER) : null,
+            formatVND(order.getGhnTotalFee()),
             shippingAddressResponse,
             itemResponses
         );
@@ -103,7 +106,10 @@ public class SellerOrderMapper {
         return new OrderActionResponse(
             order.getId(),
             order.getStatus() != null ? order.getStatus().name() : null,
-            resolveStatusLabel(order.getStatus())
+            resolveStatusLabel(order.getStatus()),
+            order.getGhnOrderCode(),
+            order.getExpectedDeliveryTime() != null ? order.getExpectedDeliveryTime().format(DATE_FORMATTER) : null,
+            formatVND(order.getGhnTotalFee())
         );
     }
 

@@ -94,6 +94,16 @@ public class Order {
     @Column(name = "delivered_at", nullable = true)
     private LocalDateTime deliveredAt;
 
+    // ── GHN Shipping Fields ──────────────────────────────────────
+    @Column(name = "ghn_order_code", length = 50, nullable = true)
+    private String ghnOrderCode;
+
+    @Column(name = "expected_delivery_time", nullable = true)
+    private LocalDateTime expectedDeliveryTime;
+
+    @Column(name = "ghn_total_fee", precision = 15, scale = 2, nullable = true)
+    private BigDecimal ghnTotalFee;
+
     @CreationTimestamp
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;
