@@ -146,6 +146,15 @@ public class GhnShippingService {
         if (toAddress == null) {
             throw new IllegalArgumentException("Đơn hàng không có địa chỉ giao hàng");
         }
+        
+        toAddress = enrichAddressCodes(toAddress);
+        if (toAddress.getDistrictId() == null || !StringUtils.hasText(toAddress.getWardCode())) {
+            throw new IllegalArgumentException("Địa chỉ nhận hàng chưa có thông tin Quận/Huyện hoặc Phường/Xã hợp lệ (GHN ID). Vui lòng yêu cầu khách hàng cập nhật lại địa chỉ, hoặc tự tạo mã vận đơn bên ngoài hệ thống.");
+        }
+        
+        if (fromShop.getDistrictId() == null || !StringUtils.hasText(fromShop.getWardCode())) {
+            throw new IllegalArgumentException("Địa chỉ Cửa hàng của bạn chưa có thông tin Quận/Huyện hoặc Phường/Xã hợp lệ (GHN ID). Vui lòng cập nhật thông tin Cửa hàng.");
+        }
 
         try {
             String url = normalizeBaseUrl() + "/v2/shipping-order/create";
