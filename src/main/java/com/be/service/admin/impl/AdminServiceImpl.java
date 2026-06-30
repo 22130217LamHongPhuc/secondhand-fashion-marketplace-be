@@ -1,4 +1,4 @@
-package com.be.service.impl;
+package com.be.service.admin.impl;
 
 import com.be.common.enums.OrderStatus;
 import com.be.common.enums.UserRole;
@@ -7,7 +7,7 @@ import com.be.entity.User;
 import com.be.repository.OrderRepository;
 import com.be.repository.ProductRepository;
 import com.be.repository.UserRepository;
-import com.be.service.AdminService;
+import com.be.service.admin.AdminService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;

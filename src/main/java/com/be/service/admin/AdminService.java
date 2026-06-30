@@ -1,4 +1,4 @@
-package com.be.service;
+package com.be.service.admin;
 
 import com.be.dto.response.AdminDashboardResponse;
 import com.be.entity.User;

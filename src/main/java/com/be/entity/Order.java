@@ -5,6 +5,8 @@ import jakarta.persistence.*;
 import lombok.*;
 import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.UpdateTimestamp;
+import org.hibernate.annotations.Fetch;
+import org.hibernate.annotations.FetchMode;
 import com.be.common.enums.OrderStatus;
 import com.be.common.enums.PaymentMethod;
 import com.be.common.enums.PaymentStatus;
@@ -114,18 +116,22 @@ public class Order {
 
     // Relationships
     @OneToMany(mappedBy = "order", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
+    @Fetch(FetchMode.SUBSELECT)
     @JsonIgnore
     private List<OrderItem> items;
 
     @OneToMany(mappedBy = "order", cascade = CascadeType.ALL, orphanRemoval = true , fetch = FetchType.LAZY)
+    @Fetch(FetchMode.SUBSELECT)
     @JsonIgnore
     private List<OrderStatusLog> statusLogs;
 
     @OneToMany(mappedBy = "order", cascade = CascadeType.ALL, orphanRemoval = true , fetch = FetchType.LAZY)
+    @Fetch(FetchMode.SUBSELECT)
     @JsonIgnore
     private List<Review> reviews;
 
     @OneToMany(mappedBy = "order", fetch = FetchType.LAZY)
+    @Fetch(FetchMode.SUBSELECT)
     @JsonIgnore
     private List<WalletTransaction> walletTransactions;
 }

@@ -1,4 +1,4 @@
-package com.be.controller;
+package com.be.controller.admin;
 
 import com.be.common.enums.CouponCreator;
 import com.be.dto.request.CouponRequest;
