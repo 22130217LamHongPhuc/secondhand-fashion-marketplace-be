@@ -31,6 +31,7 @@ public class ProductResponse {
     private BigDecimal ratingAvg;
     private Integer totalReviews;
     private Boolean isActive;
+    private Boolean isApproved;
     private String status;
     private String category;
     private String categoryName;
@@ -56,7 +57,10 @@ public class ProductResponse {
         String categoryName = product.getCategory() != null ? product.getCategory().getName() : "Chưa phân loại";
         String sellerName = product.getShop() != null ? product.getShop().getName() : "Cửa hàng";
         BigDecimal price = product.getSalePrice() != null ? product.getSalePrice() : product.getBasePrice();
-        String status = product.getIsActive() ? "selling" : "pending";
+        String status = "pending";
+        if (Boolean.TRUE.equals(product.getIsApproved())) {
+            status = Boolean.TRUE.equals(product.getIsActive()) ? "selling" : "locked";
+        }
         
         List<String> imageUrls = product.getImages() != null ? 
                 product.getImages().stream()
@@ -81,6 +85,7 @@ public class ProductResponse {
                 .ratingAvg(product.getRatingAvg())
                 .totalReviews(product.getTotalReviews())
                 .isActive(product.getIsActive())
+                .isApproved(product.getIsApproved())
                 .status(status)
                 .category(categoryName)
                 .categoryName(categoryName)

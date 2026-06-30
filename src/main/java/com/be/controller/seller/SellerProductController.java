@@ -37,6 +37,7 @@ public class SellerProductController {
     public ResponseEntity<ApiResponse<Page<ProductListResponse>>> searchProducts(
             @RequestParam(required = false) String keyword,
             @RequestParam(required = false) Boolean isActive,
+            @RequestParam(required = false) Boolean isApproved,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime fromDate,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime toDate,
             @RequestParam(required = false) BigDecimal minPrice,
@@ -45,7 +46,7 @@ public class SellerProductController {
             @RequestParam(defaultValue = "0") int page
     ) {
         return ResponseEntity.ok(ApiResponse.success(
-                sellerProductService.searchProducts(keyword, isActive, fromDate, toDate, minPrice, maxPrice, sortBy, page),
+                sellerProductService.searchProducts(keyword, isActive, isApproved, fromDate, toDate, minPrice, maxPrice, sortBy, page),
                 "Lấy danh sách sản phẩm thành công"
         ));
     }

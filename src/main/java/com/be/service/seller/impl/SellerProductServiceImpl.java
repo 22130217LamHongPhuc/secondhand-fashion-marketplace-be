@@ -60,9 +60,9 @@ public class SellerProductServiceImpl implements SellerProductService {
     private String cloudflareDomain;
 
     @Override
-    public Page<ProductListResponse> searchProducts(String keyword, Boolean isActive, LocalDateTime fromDate, LocalDateTime toDate, BigDecimal minPrice, BigDecimal maxPrice, String sortBy, int page) {
+    public Page<ProductListResponse> searchProducts(String keyword, Boolean isActive, Boolean isApproved, LocalDateTime fromDate, LocalDateTime toDate, BigDecimal minPrice, BigDecimal maxPrice, String sortBy, int page) {
         Shop shop = authHelper.getCurrentSellerShop();
-        Specification<Product> spec = ProductSpecification.buildFilter(shop.getId(), keyword, isActive, fromDate, toDate, minPrice, maxPrice);
+        Specification<Product> spec = ProductSpecification.buildFilter(shop.getId(), keyword, isActive, isApproved, fromDate, toDate, minPrice, maxPrice);
         Sort sort = resolveProductSort(sortBy);
         Page<Product> productPage = productRepository.findAll(spec, PageRequest.of(page, Constant.PRODUCT_SIZE, sort));
         List<Long> ids = productPage.getContent().stream().map(Product::getId).toList();
@@ -110,6 +110,8 @@ public class SellerProductServiceImpl implements SellerProductService {
                 .basePrice(request.basePrice())
                 .salePrice(request.salePrice())
                 .stockQuantity(request.stockQuantity())
+                .isActive(false) // Admin approval required
+                .isApproved(false)
                 .build();
 
         product.setImages(uploadAndBuildImages(product, request.images()));
@@ -169,7 +171,11 @@ public class SellerProductServiceImpl implements SellerProductService {
             product.setStockQuantity(request.stockQuantity());
         }
         if (request.isActive() != null) {
-            product.setIsActive(request.isActive());
+            if (!request.isActive()) {
+                product.setIsActive(false);
+            } else if (!product.getIsActive()) {
+                throw new IllegalStateException("Không thể tự kích hoạt sản phẩm. Vui lòng chờ Admin phê duyệt.");
+            }
         }
 
         validatePrice(product.getBasePrice(), product.getSalePrice());
