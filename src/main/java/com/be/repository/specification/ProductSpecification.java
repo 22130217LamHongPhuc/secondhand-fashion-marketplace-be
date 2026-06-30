@@ -10,7 +10,7 @@ import java.util.List;
 
 public class ProductSpecification {
 
-    public static Specification<Product> buildFilter(Long shopId, String keyword, Boolean isActive,
+    public static Specification<Product> buildFilter(Long shopId, String keyword, Boolean isActive, Boolean isApproved,
                                                      LocalDateTime fromDate, LocalDateTime toDate,
                                                      BigDecimal minPrice, BigDecimal maxPrice) {
         return (root, query, cb) -> {
@@ -27,6 +27,10 @@ public class ProductSpecification {
 
             if (isActive != null) {
                 predicates.add(cb.equal(root.get("isActive"), isActive));
+            }
+
+            if (isApproved != null) {
+                predicates.add(cb.equal(root.get("isApproved"), isApproved));
             }
 
             if (fromDate != null) {

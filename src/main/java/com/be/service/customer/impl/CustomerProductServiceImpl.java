@@ -128,7 +128,7 @@ public class CustomerProductServiceImpl implements CustomerProductService {
 
     @Override
     public ProductDetailResponse getProductDetail(Long id) {
-        Product product = productRepository.findByIdAndIsActiveTrue(id)
+        Product product = productRepository.findByIdAndIsActiveTrueAndIsApprovedTrue(id)
                 .orElseThrow(() -> new EntityNotFoundException("Product not found with id: " + id));
 
         return toProductDetail(product);
@@ -140,7 +140,7 @@ public class CustomerProductServiceImpl implements CustomerProductService {
                 .orElseThrow(() -> new EntityNotFoundException("Shop not found with id: " + shopId));
 
         var pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "createdAt", "id"));
-        var productPage = productRepository.findByShopIdAndIsActiveTrue(shopId, pageable);
+        var productPage = productRepository.findByShopIdAndIsActiveTrueAndIsApprovedTrue(shopId, pageable);
         var items = productPage.getContent().stream()
                 .map(this::toProductCard)
                 .toList();
@@ -183,7 +183,7 @@ public class CustomerProductServiceImpl implements CustomerProductService {
 
         var pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "createdAt", "id"));
         List<Long> allCategoryIds = expandCategoryIds(List.of(categoryId));
-        var productPage = productRepository.findByCategoryIdInAndIsActiveTrue(allCategoryIds, pageable);
+        var productPage = productRepository.findByCategoryIdInAndIsActiveTrueAndIsApprovedTrue(allCategoryIds, pageable);
 
         var items = productPage.getContent().stream()
                 .map(this::toProductCard)
@@ -292,7 +292,7 @@ public class CustomerProductServiceImpl implements CustomerProductService {
         Sort sortObj = mapSortParameter(sort);
         var pageable = PageRequest.of(page, size, sortObj);
 
-        Specification<Product> spec = isActiveTrue();
+        Specification<Product> spec = isActiveTrueAndIsApprovedTrue();
         spec = andIfPresent(spec, stockGreaterThanZero());
         spec = andIfPresent(spec, keywordContains(keyword));
         spec = andIfPresent(spec, categoriesIn(categoryIds));
@@ -321,7 +321,7 @@ public class CustomerProductServiceImpl implements CustomerProductService {
     @Transactional
     public CommentResponse createComment(CommentCreateRequest request) {
         User currentUser = getAuthenticatedUser();
-        Product product = productRepository.findByIdAndIsActiveTrue(request.productId())
+        Product product = productRepository.findByIdAndIsActiveTrueAndIsApprovedTrue(request.productId())
                 .orElseThrow(() -> new EntityNotFoundException("Product not found with id: " + request.productId()));
 
         Comment parentComment = null;
@@ -345,7 +345,7 @@ public class CustomerProductServiceImpl implements CustomerProductService {
 
     @Override
     public CommentPageResponse getProductComments(Long productId, int page, int size) {
-        Product product = productRepository.findByIdAndIsActiveTrue(productId)
+        Product product = productRepository.findByIdAndIsActiveTrueAndIsApprovedTrue(productId)
                 .orElseThrow(() -> new EntityNotFoundException("Product not found with id: " + productId));
 
         var pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "createdAt", "id"));
@@ -367,7 +367,7 @@ public class CustomerProductServiceImpl implements CustomerProductService {
 
     @Override
     public ReviewPageResponse getProductReviews(Long productId, int page, int size) {
-        productRepository.findByIdAndIsActiveTrue(productId)
+        productRepository.findByIdAndIsActiveTrueAndIsApprovedTrue(productId)
                 .orElseThrow(() -> new EntityNotFoundException("Product not found with id: " + productId));
 
         var pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "createdAt", "id"));
@@ -400,8 +400,11 @@ public class CustomerProductServiceImpl implements CustomerProductService {
         };
     }
 
-    private Specification<Product> isActiveTrue() {
-        return (root, query, cb) -> cb.isTrue(root.get("isActive"));
+    private Specification<Product> isActiveTrueAndIsApprovedTrue() {
+        return (root, query, cb) -> cb.and(
+                cb.isTrue(root.get("isActive")),
+                cb.isTrue(root.get("isApproved"))
+        );
     }
 
     private Specification<Product> stockGreaterThanZero() {
@@ -650,7 +653,7 @@ public class CustomerProductServiceImpl implements CustomerProductService {
             return List.of();
         }
 
-        return productRepository.findTop8ByCategoryIdAndIsActiveTrueAndIdNotOrderByCreatedAtDesc(
+        return productRepository.findTop8ByCategoryIdAndIsActiveTrueAndIsApprovedTrueAndIdNotOrderByCreatedAtDesc(
                 product.getCategory().getId(),
                 product.getId()).stream()
                 .map(this::toProductCard)
