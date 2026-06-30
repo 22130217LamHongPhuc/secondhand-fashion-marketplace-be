@@ -42,4 +42,9 @@ public interface UserPromotionRepository extends JpaRepository<UserPromotion, Lo
             @Param("now") LocalDateTime now,
             Pageable pageable // Thêm tham số này vào cuối
     );
+
+    @Query("SELECT up FROM UserPromotion up JOIN FETCH up.promotion p WHERE up.user.id = :userId AND p.code = :code")
+    java.util.List<UserPromotion> findByUserIdAndPromotionCode(
+            @Param("userId") Long userId,
+            @Param("code") String code);
 }

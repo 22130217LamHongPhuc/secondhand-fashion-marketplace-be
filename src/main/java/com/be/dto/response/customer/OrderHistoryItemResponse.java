@@ -21,6 +21,8 @@ public record OrderHistoryItemResponse(
         PaymentStatus paymentStatus,
         BigDecimal subtotal,
         BigDecimal shippingFee,
+        BigDecimal discountAmount,
+        String couponCode,
         BigDecimal total,
         int itemCount,
         String thumbnailUrl,
@@ -28,9 +30,10 @@ public record OrderHistoryItemResponse(
         LocalDateTime createdAt,
         LocalDateTime updatedAt) {
     public static OrderHistoryItemResponse fromEntity(Order order) {
+        BigDecimal discount = order.getDiscountAmount() != null ? order.getDiscountAmount() : BigDecimal.ZERO;
         BigDecimal total = order.getSubtotal()
                 .add(order.getShippingFee())
-                .subtract(order.getDiscountAmount() != null ? order.getDiscountAmount() : BigDecimal.ZERO);
+                .subtract(discount);
 
         String thumbnailUrl = null;
         String firstProductName = null;
@@ -52,6 +55,16 @@ public record OrderHistoryItemResponse(
             }
         }
 
+        // Resolve coupon code from either Coupon or Promotion
+        String couponCode = null;
+        if (discount.signum() > 0) {
+            if (order.getCoupon() != null) {
+                couponCode = order.getCoupon().getCode();
+            } else if (order.getPromotion() != null) {
+                couponCode = order.getPromotion().getCode();
+            }
+        }
+
         return new OrderHistoryItemResponse(
                 order.getId(),
                 order.getOrderCode(),
@@ -63,6 +76,8 @@ public record OrderHistoryItemResponse(
                 order.getPaymentStatus(),
                 order.getSubtotal(),
                 order.getShippingFee(),
+                discount,
+                couponCode,
                 total,
                 itemCount,
                 thumbnailUrl,
