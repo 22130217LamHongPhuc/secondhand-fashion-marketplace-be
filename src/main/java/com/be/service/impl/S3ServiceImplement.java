@@ -39,6 +39,17 @@ public class S3ServiceImplement implements S3Service {
         s3Client.putObject(request, RequestBody.fromBytes(data));
     }
 
+    @Override
+    public String uploadFileStream(java.io.File file, String key, String contentType) {
+        PutObjectRequest request = PutObjectRequest.builder()
+                .bucket(bucketName)
+                .key(key)
+                .contentType(contentType)
+                .build();
+        s3Client.putObject(request, RequestBody.fromFile(file));
+        return key;
+    }
+
     private String determineContentType(String fileName) {
         if (fileName == null) return "application/octet-stream";
 

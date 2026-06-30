@@ -35,6 +35,7 @@ public class ProductServiceImpl implements ProductService {
                 .salePrice(request.getSalePrice())
                 .stockQuantity(request.getStockQuantity())
                 .isActive(true)
+                .isApproved(true)
                 .shop(shopRepository.findById(request.getShopId())
                         .orElseThrow(() -> new RuntimeException("Shop not found")))
                 .category(request.getCategoryId() != null ? 
@@ -104,6 +105,9 @@ public class ProductServiceImpl implements ProductService {
     public Product toggleProductActive(Long id, boolean active) {
         Product product = getProductById(id);
         product.setIsActive(active);
+        if (active) {
+            product.setIsApproved(true);
+        }
         return productRepository.save(product);
     }
 

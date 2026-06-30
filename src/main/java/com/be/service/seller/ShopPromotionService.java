@@ -5,6 +5,8 @@ import com.be.dto.request.seller.PromotionCreateDTO;
 import com.be.dto.request.seller.PromotionUpdateDTO;
 import com.be.entity.Promotion;
 import org.springframework.data.domain.Page;
+import java.math.BigDecimal;
+import java.time.LocalDateTime;
 
 public interface ShopPromotionService {
     
@@ -15,7 +17,10 @@ public interface ShopPromotionService {
     Promotion updatePromotion(Long promotionId, PromotionUpdateDTO request);
 
     // Lấy danh sách mã để hiển thị trên dashboard của shop
-    Page<Promotion> getPromotionsByShop(String keyword, int page, int size);
+    Page<Promotion> getPromotionsByShop(String keyword, LocalDateTime fromDate, LocalDateTime toDate, BigDecimal minPrice, BigDecimal maxPrice, String sortBy, int page, int size);
+
+    // Lấy chi tiết mã khuyến mãi
+    Promotion getPromotionDetail(Long promotionId);
 
     // Tạm dừng (PAUSED) hoặc Kích hoạt lại (ACTIVE) một mã giảm giá
     Promotion changePromotionStatus(Long promotionId, PromotionStatus newStatus);

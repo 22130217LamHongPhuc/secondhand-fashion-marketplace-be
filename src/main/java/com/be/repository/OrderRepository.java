@@ -10,7 +10,9 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
 import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.jpa.repository.QueryHints;
 import org.springframework.data.repository.query.Param;
+import jakarta.persistence.QueryHint;
 import org.springframework.stereotype.Repository;
 
 import java.math.BigDecimal;
@@ -20,6 +22,13 @@ import java.util.Optional;
 
 @Repository
 public interface OrderRepository extends JpaRepository<Order, Long>, JpaSpecificationExecutor<Order> {
+
+    long countByShopId(Long shopId);
+
+    @QueryHints(value = @QueryHint(name = "org.hibernate.fetchSize", value = "1000"))
+    @Query("SELECT o FROM Order o LEFT JOIN FETCH o.customer WHERE o.shop.id = :shopId ORDER BY o.createdAt DESC")
+    java.util.stream.Stream<Order> streamAllByShopIdOrderByCreatedAtDesc(@Param("shopId") Long shopId);
+
     @Query("SELECT o FROM Order o WHERE o.status = :status AND o.paymentStatus = :paymentStatus AND o.paymentMethod = :paymentMethod AND o.createdAt < :limit")
     List<Order> findExpiredOrders(
             @Param("status") OrderStatus status,
@@ -86,12 +95,20 @@ public interface OrderRepository extends JpaRepository<Order, Long>, JpaSpecific
 
     Page<Order> findByShopIdAndStatus(Long shopId, OrderStatus status, Pageable pageable);
 
+    @Override
+    @EntityGraph(attributePaths = {"customer", "shop", "shippingAddress"})
+    Page<Order> findAll(Pageable pageable);
+
+    @EntityGraph(attributePaths = {"customer", "shop", "shippingAddress"})
     Page<Order> findByStatus(OrderStatus status, Pageable pageable);
 
     long countByStatus(OrderStatus status);
 
         @Query("SELECT COALESCE(SUM(o.subtotal), 0) FROM Order o")
         BigDecimal sumTotalRevenue();
+
+    @Query("SELECT o FROM Order o WHERE o.createdAt >= :startDate")
+    List<Order> findOrdersSince(@Param("startDate") LocalDateTime startDate);
     @Query("""
             SELECT o.shop.id
             FROM Order o

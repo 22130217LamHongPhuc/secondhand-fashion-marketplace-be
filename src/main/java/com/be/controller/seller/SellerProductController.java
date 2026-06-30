@@ -6,6 +6,9 @@ import com.be.dto.response.ApiResponse;
 import com.be.dto.response.seller.ProductListResponse;
 import com.be.dto.response.seller.ProductDetailResponse;
 import com.be.dto.response.seller.ProductMutationResponse;
+import com.be.entity.Shop;
+import com.be.security.AuthHelper;
+import com.be.service.ProductExportService;
 import com.be.service.seller.SellerProductService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -22,21 +25,43 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.format.annotation.DateTimeFormat;
+
+import java.math.BigDecimal;
+import java.time.LocalDateTime;
 
 @RestController
 @RequestMapping("/api/seller/products")
 @RequiredArgsConstructor
 public class SellerProductController {
     private final SellerProductService sellerProductService;
+    private final ProductExportService productExportService;
+    private final AuthHelper authHelper;
+
+    @PostMapping("/export")
+    public ResponseEntity<ApiResponse<Void>> exportProducts() {
+        Shop shop = authHelper.getCurrentSellerShop();
+        String subscriberId = authHelper.getCurrentUser().getId().toString();
+        productExportService.exportProductsAsync(shop.getId(), subscriberId);
+        return ResponseEntity.accepted().body(
+                ApiResponse.success(null, "Đang xử lý export. Vui lòng theo dõi tiến trình.")
+        );
+    }
 
     @GetMapping
     public ResponseEntity<ApiResponse<Page<ProductListResponse>>> searchProducts(
             @RequestParam(required = false) String keyword,
             @RequestParam(required = false) Boolean isActive,
+            @RequestParam(required = false) Boolean isApproved,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime fromDate,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime toDate,
+            @RequestParam(required = false) BigDecimal minPrice,
+            @RequestParam(required = false) BigDecimal maxPrice,
+            @RequestParam(defaultValue = "newest") String sortBy,
             @RequestParam(defaultValue = "0") int page
     ) {
         return ResponseEntity.ok(ApiResponse.success(
-                sellerProductService.searchProducts(keyword, isActive, page),
+                sellerProductService.searchProducts(keyword, isActive, isApproved, fromDate, toDate, minPrice, maxPrice, sortBy, page),
                 "Lấy danh sách sản phẩm thành công"
         ));
     }

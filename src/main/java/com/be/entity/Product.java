@@ -79,6 +79,10 @@ public class Product {
     @Builder.Default
     private Boolean isActive = true;
 
+    @Column(name = "is_approved", nullable = false)
+    @Builder.Default
+    private Boolean isApproved = false;
+
     // ── GHN Shipping Dimensions ───────────────────────────────────
     /** Khối lượng (gram) – mặc định 500g cho đồ thời trang secondhand */
     @Column(name = "weight", nullable = false)

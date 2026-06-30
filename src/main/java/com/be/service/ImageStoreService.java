@@ -8,4 +8,5 @@ public interface ImageStoreService {
     String uploadImage(MultipartFile file);
     String updateImage(MultipartFile file, String url);
     void copyImage(String sourceKey, String destinationKey);
+    String moveImageToTemp(String url);
 }

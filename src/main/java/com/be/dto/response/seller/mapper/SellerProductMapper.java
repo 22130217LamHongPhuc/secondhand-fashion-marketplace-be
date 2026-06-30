@@ -36,7 +36,7 @@ public class SellerProductMapper {
             formatVND(basePrice),
             hasDiscount,
             product.getStockQuantity() != null ? product.getStockQuantity() : 0,
-            resolveDisplayStatus(product.getIsActive(), product.getStockQuantity()),
+            resolveDisplayStatus(product.getIsApproved(), product.getIsActive(), product.getStockQuantity()),
             resolveThumbnailUrl(product.getImages())
         );
     }
@@ -88,7 +88,7 @@ public class SellerProductMapper {
         return new ProductMutationResponse(
             product.getId(),
             product.getName(),
-            resolveDisplayStatus(product.getIsActive(), product.getStockQuantity()),
+            resolveDisplayStatus(product.getIsApproved(), product.getIsActive(), product.getStockQuantity()),
             resolveThumbnailUrl(product.getImages())
         );
     }
@@ -99,11 +99,15 @@ public class SellerProductMapper {
         return nf.format(val) + "đ";
     }
 
-    public static String resolveDisplayStatus(Boolean isActive, Integer stockQuantity) {
+    public static String resolveDisplayStatus(Boolean isApproved, Boolean isActive, Integer stockQuantity) {
+        boolean approved = isApproved != null ? isApproved : false;
         boolean active = isActive != null ? isActive : false;
         int stock = stockQuantity != null ? stockQuantity : 0;
+        if (!approved) {
+            return "Chờ duyệt";
+        }
         if (!active) {
-            return "Đã ẩn";
+            return "Đang khóa";
         }
         return stock > 0 ? "Đang bán" : "Hết hàng";
     }

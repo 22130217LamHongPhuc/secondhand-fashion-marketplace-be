@@ -5,34 +5,33 @@ import com.be.dto.response.ApiResponse;
 import com.be.dto.response.seller.OrderListResponse;
 import com.be.dto.response.seller.OrderDetailResponse;
 import com.be.dto.response.seller.OrderActionResponse;
+import com.be.entity.Shop;
+import com.be.security.AuthHelper;
+import com.be.service.OrderExportService;
 import com.be.service.seller.SellerOrderService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.time.LocalDate;
+import java.time.LocalDateTime;
+import org.springframework.format.annotation.DateTimeFormat;
+import java.math.BigDecimal;
 
 @RestController
 @RequestMapping("/api/seller/orders")
 @RequiredArgsConstructor
 public class SellerOrderController {
     private final SellerOrderService sellerOrderService;
-
-    @GetMapping("all")
-    public ResponseEntity<ApiResponse<Page<OrderListResponse>>> getListByPage(
-            @RequestParam(defaultValue = "0") int page
-    ) {
-        return ResponseEntity.ok(ApiResponse.success(
-                sellerOrderService.getListByPage(page),
-                "Lấy danh sách đơn hàng thành công"
-        ));
-    }
+    private final OrderExportService orderExportService;
+    private final AuthHelper authHelper;
 
     @GetMapping("/{id}")
     public ResponseEntity<ApiResponse<OrderDetailResponse>> getDetails(@PathVariable Long id) {
@@ -42,26 +41,20 @@ public class SellerOrderController {
         ));
     }
 
-    @GetMapping()
-    public ResponseEntity<ApiResponse<Page<OrderListResponse>>> getListByStatusAndOrderCode(
+    @GetMapping
+    public ResponseEntity<ApiResponse<Page<OrderListResponse>>> searchOrders(
             @RequestParam(required = false) OrderStatus status,
-            @RequestParam(defaultValue = "0") int page,
-            @RequestParam(required = false) String orderCode
-    ) {
-        return ResponseEntity.ok(ApiResponse.success(
-                sellerOrderService.getListByStatusAndOrderCode(status, orderCode, page),
-                "Lấy danh sách đơn hàng theo trạng thái thành công"
-        ));
-    }
-
-    @GetMapping("/current-month")
-    public ResponseEntity<ApiResponse<Page<OrderListResponse>>> getListByCurrentMonth(
+            @RequestParam(required = false) String orderCode,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime fromDate,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime toDate,
+            @RequestParam(required = false) BigDecimal minPrice,
+            @RequestParam(required = false) BigDecimal maxPrice,
+            @RequestParam(defaultValue = "newest") String sortBy,
             @RequestParam(defaultValue = "0") int page
     ) {
-        LocalDate now = LocalDate.now();
         return ResponseEntity.ok(ApiResponse.success(
-                sellerOrderService.getListByMonth(now.getYear(), now.getMonthValue(), page),
-                "Lấy danh sách đơn hàng trong tháng thành công"
+                sellerOrderService.searchOrders(status, orderCode, fromDate, toDate, minPrice, maxPrice, sortBy, page),
+                "Lấy danh sách đơn hàng thành công"
         ));
     }
 
@@ -96,7 +89,17 @@ public class SellerOrderController {
     ) {
         return ResponseEntity.ok(ApiResponse.success(
                 sellerOrderService.cancelOrder(id, reason),
-                "Hủy đơn hàng thành công"
+                "Đã hủy đơn hàng thành công"
         ));
+    }
+
+    @PostMapping("/export")
+    public ResponseEntity<ApiResponse<Void>> exportOrders() {
+        Shop shop = authHelper.getCurrentSellerShop();
+        String subscriberId = authHelper.getCurrentUser().getId().toString();
+        orderExportService.exportOrdersAsync(shop.getId(), subscriberId);
+        return ResponseEntity.accepted().body(
+                ApiResponse.success(null, "Đang xử lý export đơn hàng. Vui lòng theo dõi tiến trình.")
+        );
     }
 }

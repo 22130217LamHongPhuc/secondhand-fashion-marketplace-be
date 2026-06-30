@@ -130,7 +130,7 @@ class CustomerProductServiceImplTest {
                 .build();
         reviewB.setCreatedAt(LocalDateTime.of(2026, 5, 17, 10, 0));
 
-        when(productRepository.findByIdAndIsActiveTrue(10L)).thenReturn(Optional.of(product));
+        when(productRepository.findByIdAndIsActiveTrueAndIsApprovedTrue(10L)).thenReturn(Optional.of(product));
         when(reviewRepository.findTop3ByProductIdAndIsVisibleTrueOrderByCreatedAtDescIdDesc(10L))
                 .thenReturn(List.of(reviewA, reviewB));
         when(commentRepository.findTop3ByProductIdAndIsVisibleTrueOrderByCreatedAtDescIdDesc(10L))
@@ -175,7 +175,7 @@ class CustomerProductServiceImplTest {
                 .build();
 
         when(shopRepository.findByIdAndIsActiveTrue(20L)).thenReturn(Optional.of(shop));
-        when(productRepository.findByShopIdAndIsActiveTrue(any(Long.class), any(org.springframework.data.domain.Pageable.class)))
+        when(productRepository.findByShopIdAndIsActiveTrueAndIsApprovedTrue(any(Long.class), any(org.springframework.data.domain.Pageable.class)))
                 .thenReturn(new PageImpl<>(List.of(product), PageRequest.of(0, 10), 1));
 
         ShopDetailWithProductsResponse response = customerProductService.getShopDetailWithProducts(20L, 0, 10);

@@ -16,15 +16,21 @@ import com.be.repository.OrderRepository;
 import com.be.repository.OrderStatusLogRepository;
 import com.be.repository.ProductRepository;
 import com.be.security.AuthHelper;
+import com.be.service.GhnShippingService;
 import com.be.service.seller.SellerOrderService;
 import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Sort;
+import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import com.be.repository.specification.OrderSpecification;
 
 import java.time.YearMonth;
+import java.time.LocalDateTime;
+import java.math.BigDecimal;
 
 @Service
 @RequiredArgsConstructor
@@ -33,12 +39,27 @@ public class SellerOrderServiceImpl implements SellerOrderService {
     private final OrderStatusLogRepository orderStatusLogRepository;
     private final ProductRepository productRepository;
     private final AuthHelper authHelper;
+    private final GhnShippingService ghnShippingService;
 
     @Override
-    public Page<OrderListResponse> getListByPage(int page) {
+    public Page<OrderListResponse> searchOrders(OrderStatus status, String orderCode, LocalDateTime fromDate, LocalDateTime toDate, BigDecimal minPrice, BigDecimal maxPrice, String sortBy, int page) {
         Shop shop = authHelper.getCurrentSellerShop();
-        Page<Order> orders = orderRepository.getListByShopAndPage(shop.getId(), PageRequest.of(page, Constant.ORDER_SIZE));
+        Specification<Order> spec = OrderSpecification.buildFilter(shop.getId(), status, orderCode, fromDate, toDate, minPrice, maxPrice);
+        Sort sort = resolveOrderSort(sortBy);
+        Page<Order> orders = orderRepository.findAll(spec, PageRequest.of(page, Constant.ORDER_SIZE, sort));
         return orders.map(SellerOrderMapper::toListResponse);
+    }
+
+    private Sort resolveOrderSort(String sortBy) {
+        if (sortBy == null) {
+            return Sort.by("createdAt").descending();
+        }
+        return switch (sortBy) {
+            case "price_asc" -> Sort.by("subtotal").ascending();
+            case "price_desc" -> Sort.by("subtotal").descending();
+            case "oldest" -> Sort.by("createdAt").ascending();
+            default -> Sort.by("createdAt").descending();
+        };
     }
 
     @Override
@@ -52,25 +73,6 @@ public class SellerOrderServiceImpl implements SellerOrderService {
         return SellerOrderMapper.toDetailResponse(order);
     }
 
-    @Override
-    public Page<OrderListResponse> getListByStatusAndOrderCode(OrderStatus status, String orderCode, int page) {
-        Shop shop = authHelper.getCurrentSellerShop();
-        Page<Order> orders = orderRepository.getListByShopAndStatusAndOrderCode(shop.getId(), status, orderCode, PageRequest.of(page, Constant.ORDER_SIZE));
-        return orders.map(SellerOrderMapper::toListResponse);
-    }
-
-    @Override
-    public Page<OrderListResponse> getListByMonth(int year, int month, int page) {
-        Shop shop = authHelper.getCurrentSellerShop();
-        YearMonth yearMonth = YearMonth.of(year, month);
-        Page<Order> orders = orderRepository.getListByShopAndMonth(
-                shop.getId(),
-                yearMonth.atDay(1).atStartOfDay(),
-                yearMonth.plusMonths(1).atDay(1).atStartOfDay(),
-                PageRequest.of(page, Constant.ORDER_SIZE)
-        );
-        return orders.map(SellerOrderMapper::toListResponse);
-    }
 
     @Override
     @Transactional
@@ -82,15 +84,44 @@ public class SellerOrderServiceImpl implements SellerOrderService {
     @Override
     @Transactional
     public OrderActionResponse startDelivery(Long orderId) {
-        Order order = updateOrderStatus(orderId, OrderStatus.SHIPPING, "Đơn hàng đang được giao");
-        return SellerOrderMapper.toActionResponse(order);
+        Order order = orderRepository.findById(orderId)
+                .orElseThrow(() -> new IllegalArgumentException("Không tìm thấy đơn hàng với id: " + orderId));
+        
+        Shop shop = authHelper.getCurrentSellerShop();
+        if (!order.getShop().getId().equals(shop.getId())) {
+            throw new IllegalStateException("Bạn không có quyền cập nhật đơn hàng này");
+        }
+        
+        if (order.getStatus() != OrderStatus.CONFIRMED) {
+            throw new IllegalStateException("Trạng thái chuyển đổi không hợp lệ. Chỉ có thể giao đơn hàng đã xác nhận.");
+        }
+
+        // Gọi GHN API tạo đơn giao hàng
+        GhnShippingService.CreateOrderResult ghnResult = ghnShippingService.createShippingOrder(order);
+        
+        order.setGhnOrderCode(ghnResult.orderCode());
+        order.setExpectedDeliveryTime(ghnResult.expectedDeliveryTime());
+        order.setGhnTotalFee(ghnResult.totalFee());
+        orderRepository.save(order); // Lưu trước thông tin để updateOrderStatus có thể dùng instance này
+        
+        Order savedOrder = updateOrderStatus(orderId, OrderStatus.SHIPPING, "Đơn hàng đang được giao (Mã GHN: " + ghnResult.orderCode() + ")");
+        
+        // Ensure the GHN fields are included in the mapper by passing the updated instance if updateOrderStatus fetched a stale one (though 1st level cache prevents this)
+        savedOrder.setGhnOrderCode(ghnResult.orderCode());
+        
+        return SellerOrderMapper.toActionResponse(savedOrder);
     }
 
     @Override
     @Transactional
     public OrderActionResponse completeOrder(Long orderId) {
-        Order order = updateOrderStatus(orderId, OrderStatus.DONE, "Đơn hàng hoàn thành");
-        return SellerOrderMapper.toActionResponse(order);
+        Order order = orderRepository.findById(orderId)
+                .orElseThrow(() -> new IllegalArgumentException("Không tìm thấy đơn hàng với id: " + orderId));
+        order.setDeliveredAt(LocalDateTime.now());
+        orderRepository.save(order);
+        
+        Order savedOrder = updateOrderStatus(orderId, OrderStatus.DONE, "Đơn hàng hoàn thành");
+        return SellerOrderMapper.toActionResponse(savedOrder);
     }
 
     @Override

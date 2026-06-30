@@ -15,10 +15,14 @@ import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Sort;
+import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import com.be.repository.specification.PromotionSpecification;
 
 import java.math.BigDecimal;
+import java.time.LocalDateTime;
 
 @Service
 @RequiredArgsConstructor
@@ -135,12 +139,30 @@ public class ShopPromotionServiceImpl implements ShopPromotionService {
     }
 
     @Override
-    public Page<Promotion> getPromotionsByShop(String keyword, int page, int size) {
+    public Page<Promotion> getPromotionsByShop(String keyword, LocalDateTime fromDate, LocalDateTime toDate, BigDecimal minPrice, BigDecimal maxPrice, String sortBy, int page, int size) {
         Shop shop = authHelper.getCurrentSellerShop();
-        if (keyword != null && !keyword.trim().isEmpty()) {
-            return promotionRepository.findByShop_IdAndCodeContainingIgnoreCase(shop.getId(), keyword.trim(), PageRequest.of(page, size));
+        Specification<Promotion> spec = PromotionSpecification.buildFilter(shop.getId(), keyword, fromDate, toDate, minPrice, maxPrice);
+        Sort sort = resolvePromotionSort(sortBy);
+        return promotionRepository.findAll(spec, PageRequest.of(page, size, sort));
+    }
+
+    private Sort resolvePromotionSort(String sortBy) {
+        if (sortBy == null) {
+            return Sort.by("createdAt").descending();
         }
-        return promotionRepository.findByShop_Id(shop.getId(), PageRequest.of(page, size));
+        return switch (sortBy) {
+            case "price_asc" -> Sort.by("discountValue").ascending();
+            case "price_desc" -> Sort.by("discountValue").descending();
+            case "oldest" -> Sort.by("createdAt").ascending();
+            default -> Sort.by("createdAt").descending();
+        };
+    }
+
+    @Override
+    public Promotion getPromotionDetail(Long promotionId) {
+        Shop shop = authHelper.getCurrentSellerShop();
+        return promotionRepository.findByIdAndShop_Id(promotionId, shop.getId())
+                .orElseThrow(() -> new EntityNotFoundException("Không tìm thấy khuyến mãi hoặc bạn không có quyền xem"));
     }
 
     @Override

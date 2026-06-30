@@ -1,10 +1,10 @@
-package com.be.controller;
+package com.be.controller.admin;
 
 import com.be.common.enums.OrderStatus;
 import com.be.dto.request.CategoryRequest;
 import com.be.dto.response.*;
 import com.be.entity.Category;
-import com.be.service.AdminService;
+import com.be.service.admin.AdminService;
 import com.be.service.OrderService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
@@ -39,18 +39,25 @@ public class AdminController {
     public ResponseEntity<PagedResponse<UserResponse>> getUsers(
             @RequestParam(required = false) String search,
             @RequestParam(required = false) String role,
+            @RequestParam(required = false) Boolean active,
             @RequestParam(defaultValue = "1") int page,
             @RequestParam(defaultValue = "10") int limit) {
         Pageable pageable = PageRequest.of(page > 0 ? page - 1 : 0, limit);
         com.be.common.enums.UserRole userRole = null;
-        if (role != null && !role.isEmpty() && !role.equalsIgnoreCase("all")) {
+        if (role != null && !role.isEmpty() && !role.equalsIgnoreCase("all") && !role.equalsIgnoreCase("locked")) {
             try {
                 userRole = com.be.common.enums.UserRole.valueOf(role.toUpperCase());
             } catch (IllegalArgumentException e) {
                 // Ignore invalid role
             }
         }
-        Page<UserResponse> users = adminService.getAllUsers(userRole, search, pageable)
+
+        Boolean isActive = active;
+        if (role != null && role.equalsIgnoreCase("locked")) {
+            isActive = false;
+        }
+
+        Page<UserResponse> users = adminService.getAllUsers(userRole, isActive, search, pageable)
                 .map(UserResponse::fromEntity);
         return ResponseEntity.ok(PagedResponse.fromPage(users));
     }
@@ -308,5 +315,10 @@ public class AdminController {
         }
 
         return category;
+    }
+
+    @GetMapping("/dashboard/sales")
+    public ResponseEntity<List<Map<String, Object>>> getSalesData(@RequestParam(defaultValue = "month") String period) {
+        return ResponseEntity.ok(adminService.getSalesData(period));
     }
 }
