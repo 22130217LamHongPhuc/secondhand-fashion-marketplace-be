@@ -4,7 +4,7 @@ import com.be.common.enums.OrderStatus;
 import com.be.dto.request.CategoryRequest;
 import com.be.dto.response.*;
 import com.be.entity.Category;
-import com.be.service.AdminService;
+import com.be.service.admin.AdminService;
 import com.be.service.OrderService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;

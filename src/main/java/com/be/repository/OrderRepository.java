@@ -95,6 +95,11 @@ public interface OrderRepository extends JpaRepository<Order, Long>, JpaSpecific
 
     Page<Order> findByShopIdAndStatus(Long shopId, OrderStatus status, Pageable pageable);
 
+    @Override
+    @EntityGraph(attributePaths = {"customer", "shop", "shippingAddress"})
+    Page<Order> findAll(Pageable pageable);
+
+    @EntityGraph(attributePaths = {"customer", "shop", "shippingAddress"})
     Page<Order> findByStatus(OrderStatus status, Pageable pageable);
 
     long countByStatus(OrderStatus status);
