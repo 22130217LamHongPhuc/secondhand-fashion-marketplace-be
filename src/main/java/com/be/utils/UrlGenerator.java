@@ -39,7 +39,7 @@ public class UrlGenerator {
         if (cleanKey.startsWith("/")) {
             cleanKey = cleanKey.substring(1);
         }
-
+        System.out.println(cleanBaseUrl + cleanKey);
         return cleanBaseUrl + cleanKey;
     }
 

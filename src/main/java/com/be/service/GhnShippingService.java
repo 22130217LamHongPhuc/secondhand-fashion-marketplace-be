@@ -6,6 +6,9 @@ import com.be.dto.response.shipping.ShippingFeeResponse;
 import com.be.entity.Product;
 import com.be.entity.Shop;
 import com.be.entity.UserAddress;
+import com.be.entity.Order;
+import com.be.entity.OrderItem;
+import com.be.common.enums.PaymentMethod;
 import com.be.repository.ProductRepository;
 import com.be.repository.UserAddressRepository;
 import lombok.RequiredArgsConstructor;
@@ -21,6 +24,8 @@ import org.springframework.web.client.RestTemplate;
 
 import java.math.BigDecimal;
 import java.text.Normalizer;
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
@@ -132,6 +137,119 @@ public class GhnShippingService {
                 .fallbackUsed(fallbackUsed)
                 .message(fallbackUsed ? "Một số phí vận chuyển đang dùng phí mặc định do thiếu dữ liệu GHN hoặc GHN lỗi." : "Tính phí vận chuyển thành công")
                 .build();
+    }
+
+    public CreateOrderResult createShippingOrder(Order order) {
+        UserAddress toAddress = order.getShippingAddress();
+        Shop fromShop = order.getShop();
+
+        if (toAddress == null) {
+            throw new IllegalArgumentException("Đơn hàng không có địa chỉ giao hàng");
+        }
+
+        try {
+            String url = normalizeBaseUrl() + "/v2/shipping-order/create";
+            HttpHeaders headers = ghnHeaders();
+            headers.set("ShopId", ghnShopId);
+
+            Map<String, Object> requestBody = new HashMap<>();
+            requestBody.put("payment_type_id", 1); // 1 = Shop trả tiền, 2 = Người nhận trả
+            requestBody.put("note", "Đơn hàng từ " + fromShop.getName());
+            requestBody.put("required_note", "CHOXEMHANGKHONGTHU");
+            requestBody.put("client_order_code", order.getOrderCode());
+
+            requestBody.put("to_name", toAddress.getFullName());
+            requestBody.put("to_phone", toAddress.getPhone());
+            requestBody.put("to_address", toAddress.getAddressDetail());
+            requestBody.put("to_ward_code", toAddress.getWardCode());
+            requestBody.put("to_district_id", toAddress.getDistrictId());
+
+            requestBody.put("from_district_id", fromShop.getDistrictId());
+            requestBody.put("from_ward_code", fromShop.getWardCode());
+            requestBody.put("return_district_id", fromShop.getDistrictId());
+            requestBody.put("return_ward_code", fromShop.getWardCode());
+
+            int totalWeight = 0;
+            int maxLength = 20;
+            int maxWidth = 15;
+            int totalHeight = 0;
+            BigDecimal insuranceValue = BigDecimal.ZERO;
+            List<Map<String, Object>> ghnItems = new ArrayList<>();
+
+            if (order.getItems() != null) {
+                for (OrderItem item : order.getItems()) {
+                    Product product = item.getProduct();
+                    int qty = item.getQuantity() != null ? item.getQuantity() : 1;
+                    
+                    int w = product != null ? defaultInt(product.getWeight(), 500) : 500;
+                    int l = product != null ? defaultInt(product.getLength(), 20) : 20;
+                    int wd = product != null ? defaultInt(product.getWidth(), 15) : 15;
+                    int h = product != null ? defaultInt(product.getHeight(), 5) : 5;
+
+                    totalWeight += w * qty;
+                    maxLength = Math.max(maxLength, l);
+                    maxWidth = Math.max(maxWidth, wd);
+                    totalHeight += h * qty;
+                    
+                    if (item.getUnitPrice() != null) {
+                        insuranceValue = insuranceValue.add(item.getUnitPrice().multiply(BigDecimal.valueOf(qty)));
+                    }
+
+                    Map<String, Object> ghnItem = new HashMap<>();
+                    ghnItem.put("name", item.getProductName());
+                    ghnItem.put("quantity", qty);
+                    ghnItem.put("price", item.getUnitPrice() != null ? item.getUnitPrice().intValue() : 0);
+                    ghnItem.put("weight", w);
+                    ghnItems.add(ghnItem);
+                }
+            }
+
+            requestBody.put("weight", Math.max(totalWeight, 1));
+            requestBody.put("length", Math.max(maxLength, 1));
+            requestBody.put("width", Math.max(maxWidth, 1));
+            requestBody.put("height", Math.max(totalHeight, 1));
+            requestBody.put("insurance_value", insuranceValue.intValue());
+            requestBody.put("service_type_id", 2); // 2: Chuẩn
+
+            int codAmount = 0;
+            if (PaymentMethod.COD.equals(order.getPaymentMethod())) {
+                BigDecimal sub = order.getSubtotal() != null ? order.getSubtotal() : BigDecimal.ZERO;
+                BigDecimal fee = order.getShippingFee() != null ? order.getShippingFee() : BigDecimal.ZERO;
+                BigDecimal disc = order.getDiscountAmount() != null ? order.getDiscountAmount() : BigDecimal.ZERO;
+                BigDecimal total = sub.add(fee).subtract(disc);
+                codAmount = total.max(BigDecimal.ZERO).intValue();
+            }
+            requestBody.put("cod_amount", codAmount);
+            requestBody.put("items", ghnItems);
+
+            ResponseEntity<Map> response = restTemplate.postForEntity(url, new HttpEntity<>(requestBody, headers), Map.class);
+            Map body = response.getBody();
+            if (response.getStatusCode().is2xxSuccessful() && body != null && Integer.valueOf(200).equals(body.get("code"))) {
+                Map data = (Map) body.get("data");
+                if (data != null) {
+                    String ghnCode = (String) data.get("order_code");
+                    String expectedDeliveryStr = (String) data.get("expected_delivery_time");
+                    LocalDateTime expectedTime = null;
+                    if (expectedDeliveryStr != null) {
+                        try {
+                            expectedTime = LocalDateTime.parse(expectedDeliveryStr.replace("Z", ""), DateTimeFormatter.ISO_LOCAL_DATE_TIME);
+                        } catch (Exception e) {
+                            // ignore format error
+                        }
+                    }
+                    Number fee = (Number) data.get("total_fee");
+                    BigDecimal totalFee = fee != null ? new BigDecimal(fee.toString()) : BigDecimal.ZERO;
+
+                    return new CreateOrderResult(ghnCode, expectedTime, totalFee);
+                }
+            }
+            
+            String errorMsg = body != null ? String.valueOf(body.get("message")) : "Không xác định";
+            throw new RuntimeException("Lỗi tạo đơn GHN: " + errorMsg);
+
+        } catch (Exception e) {
+            throw new RuntimeException("Không thể gọi GHN API: " + e.getMessage(), e);
+        }
     }
 
     public FeeResult calculateGhnFee(Integer fromDistrictId, String fromWardCode,
@@ -286,4 +404,6 @@ public class GhnShippingService {
     private record ProductQuantity(Product product, int quantity) {}
 
     public record FeeResult(BigDecimal fee, boolean fallbackUsed) {}
+    
+    public record CreateOrderResult(String orderCode, LocalDateTime expectedDeliveryTime, BigDecimal totalFee) {}
 }

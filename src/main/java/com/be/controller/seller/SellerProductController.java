@@ -6,6 +6,9 @@ import com.be.dto.response.ApiResponse;
 import com.be.dto.response.seller.ProductListResponse;
 import com.be.dto.response.seller.ProductDetailResponse;
 import com.be.dto.response.seller.ProductMutationResponse;
+import com.be.entity.Shop;
+import com.be.security.AuthHelper;
+import com.be.service.ProductExportService;
 import com.be.service.seller.SellerProductService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -32,6 +35,18 @@ import java.time.LocalDateTime;
 @RequiredArgsConstructor
 public class SellerProductController {
     private final SellerProductService sellerProductService;
+    private final ProductExportService productExportService;
+    private final AuthHelper authHelper;
+
+    @PostMapping("/export")
+    public ResponseEntity<ApiResponse<Void>> exportProducts() {
+        Shop shop = authHelper.getCurrentSellerShop();
+        String subscriberId = authHelper.getCurrentUser().getId().toString();
+        productExportService.exportProductsAsync(shop.getId(), subscriberId);
+        return ResponseEntity.accepted().body(
+                ApiResponse.success(null, "Đang xử lý export. Vui lòng theo dõi tiến trình.")
+        );
+    }
 
     @GetMapping
     public ResponseEntity<ApiResponse<Page<ProductListResponse>>> searchProducts(

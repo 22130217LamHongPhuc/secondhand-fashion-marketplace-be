@@ -21,6 +21,9 @@ public record OrderDetailResponse(
     String paidAt,
     String deliveredAt,
     String createdAt,
+    String ghnOrderCode,
+    String expectedDeliveryTime,
+    String ghnTotalFee,
     ShippingAddressResponse shippingAddress,
     List<OrderItemResponse> items
 ) {}

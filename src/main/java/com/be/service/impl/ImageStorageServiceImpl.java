@@ -68,6 +68,31 @@ public class ImageStorageServiceImpl implements ImageStoreService {
         }
     }
 
+    @Override
+    public String moveImageToTemp(String url) {
+        if (url == null || url.isBlank()) {
+            return null;
+        }
+        
+        try {
+            String oldKey = KeyGeneratorUtil.extractKey(url);
+            if (oldKey.startsWith(KeyGeneratorUtil.FOLDER_TEMP)) {
+                return url;
+            }
+            
+            String fileName = oldKey.contains("/") ? oldKey.substring(oldKey.lastIndexOf("/") + 1) : oldKey;
+            String tempKey = KeyGeneratorUtil.generateTempKey(fileName);
+            
+            copyImage(oldKey, tempKey);
+            deleteFileByKey(oldKey);
+            
+            return UrlGenerator.generateUrl(tempKey);
+        } catch (Exception e) {
+            log.error("Lỗi khi chuyển ảnh về temp cho URL [{}]: {}", url, e.getMessage());
+            return null;
+        }
+    }
+
     private void deleteFileByKey(String key) {
         if (key == null || key.trim().isEmpty()) {
             return;
