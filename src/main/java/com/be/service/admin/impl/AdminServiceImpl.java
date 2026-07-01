@@ -44,23 +44,80 @@ public class AdminServiceImpl implements AdminService {
     private final RoleRepository roleRepository;
     private final com.be.service.SseEmitterService sseEmitterService;
 
+    private double calculateGrowthPercentage(double current, double previous) {
+        if (previous <= 0) {
+            return current > 0 ? 100.0 : 0.0;
+        }
+        return ((current - previous) / previous) * 100.0;
+    }
+
     @Override
     public AdminDashboardResponse getDashboardStats() {
         BigDecimal totalRevenue = orderRepository.sumTotalRevenue();
         if (totalRevenue == null) totalRevenue = BigDecimal.ZERO;
 
+        long totalUsers = userRepository.count();
+        long totalOrders = orderRepository.count();
+
+        java.time.LocalDateTime thirtyDaysAgo = java.time.LocalDateTime.now().minusDays(30);
+        java.time.LocalDateTime sixtyDaysAgo = java.time.LocalDateTime.now().minusDays(60);
+
+        // Growth calculations
+        long usersThisMonth = userRepository.countByCreatedAtAfter(thirtyDaysAgo);
+        long usersPrevMonth = userRepository.countByCreatedAtBetween(sixtyDaysAgo, thirtyDaysAgo);
+        double userGrowth = calculateGrowthPercentage(usersThisMonth, usersPrevMonth);
+
+        long ordersThisMonth = orderRepository.countByCreatedAtAfter(thirtyDaysAgo);
+        long ordersPrevMonth = orderRepository.countByCreatedAtBetween(sixtyDaysAgo, thirtyDaysAgo);
+        double orderGrowth = calculateGrowthPercentage(ordersThisMonth, ordersPrevMonth);
+
+        BigDecimal revenueThisMonth = orderRepository.sumRevenueSince(thirtyDaysAgo, OrderStatus.DONE);
+        BigDecimal revenuePrevMonth = orderRepository.sumRevenueBetween(sixtyDaysAgo, thirtyDaysAgo, OrderStatus.DONE);
+        double revenueGrowth = calculateGrowthPercentage(revenueThisMonth.doubleValue(), revenuePrevMonth.doubleValue());
+
+        // Order counts by status
+        long pendingOrders = orderRepository.countByStatus(OrderStatus.PENDING);
+        long confirmedOrders = orderRepository.countByStatus(OrderStatus.CONFIRMED);
+        long shippingOrders = orderRepository.countByStatus(OrderStatus.SHIPPING);
+        long completedOrders = orderRepository.countByStatus(OrderStatus.DONE);
+        long cancelledOrders = orderRepository.countByStatus(OrderStatus.CANCELLED);
+
+        // Returned orders (complaints resolved and order not null)
+        long returnedOrders = complaintRepository.findAll().stream()
+                .filter(c -> c.getStatus() == com.be.common.enums.ComplaintStatus.RESOLVED 
+                        && c.getType() == com.be.common.enums.ComplaintType.SHOP_COMPLAINT 
+                        && c.getOrder() != null)
+                .count();
+
+        double cancellationRate = totalOrders > 0 ? ((double) cancelledOrders / totalOrders) * 100.0 : 0.0;
+        double returnRate = totalOrders > 0 ? ((double) returnedOrders / totalOrders) * 100.0 : 0.0;
+
         return AdminDashboardResponse.builder()
-                .totalUsers(userRepository.count())
+                .totalUsers(totalUsers)
                 .totalSellers(userRepository.countByRole(UserRole.SELLER))
                 .totalProducts(productRepository.count())
-                .totalOrders(orderRepository.count())
+                .totalOrders(totalOrders)
                 .totalRevenue(totalRevenue)
                 .activeUsers(userRepository.countByIsActiveTrue())
-                .pendingOrders(orderRepository.countByStatus(OrderStatus.PENDING))
+                .pendingOrders(pendingOrders)
+                .confirmedOrders(confirmedOrders)
+                .shippingOrders(shippingOrders)
+                .completedOrders(completedOrders)
+                .cancelledOrders(cancelledOrders)
+                .returnedOrders(returnedOrders)
+                .cancellationRate(cancellationRate)
+                .returnRate(returnRate)
+                .userGrowth(userGrowth)
+                .orderGrowth(orderGrowth)
+                .revenueGrowth(revenueGrowth)
+                .pendingComplaints(complaintRepository.countByStatus(com.be.common.enums.ComplaintStatus.PENDING))
+                .totalShops(shopRepository.count())
+                .activeShops(shopRepository.countByIsActive(true))
+                .verifiedShops(shopRepository.countByIsVerified(true))
                 .recentOrders(orderRepository.findAll(org.springframework.data.domain.PageRequest.of(0, 5, org.springframework.data.domain.Sort.by(org.springframework.data.domain.Sort.Direction.DESC, "createdAt")))
                         .getContent().stream()
                         .map(order -> AdminDashboardResponse.OrderSummary.builder()
-                        .id(String.valueOf(order.getId()))
+                                .id(String.valueOf(order.getId()))
                                 .customerName(order.getCustomer() != null ? order.getCustomer().getFullName() : "Unknown")
                                 .total(order.getSubtotal() != null ? order.getSubtotal() : BigDecimal.ZERO)
                                 .status(order.getStatus() != null ? order.getStatus().name() : "UNKNOWN")
@@ -192,6 +249,16 @@ public class AdminServiceImpl implements AdminService {
         shop.setWarningStrikes(strikes);
         if (strikes >= 5) {
             shop.setIsActive(false);
+            
+            // Revert user to CUSTOMER if shop gets auto-locked
+            User user = shop.getSeller();
+            Role targetRole = roleRepository.findByName(UserRole.CUSTOMER)
+                    .orElseThrow(() -> new RuntimeException("Role not found: CUSTOMER"));
+            user.setRole(UserRole.CUSTOMER);
+            if (user.getUserRoles() != null && !user.getUserRoles().isEmpty()) {
+                user.getUserRoles().get(0).setRole(targetRole);
+            }
+            userRepository.save(user);
         }
         return shopRepository.save(shop);
     }
@@ -211,6 +278,33 @@ public class AdminServiceImpl implements AdminService {
         Shop shop = shopRepository.findById(shopId)
                 .orElseThrow(() -> new RuntimeException("Shop not found with id: " + shopId));
         shop.setIsActive(active);
+        
+        // Cập nhật vai trò người dùng tương ứng (SELLER khi được duyệt, CUSTOMER khi huỷ duyệt/khóa)
+        User user = shop.getSeller();
+        UserRole targetRoleEnum = active ? UserRole.SELLER : UserRole.CUSTOMER;
+        
+        Role targetRole = roleRepository.findByName(targetRoleEnum)
+                .orElseThrow(() -> new RuntimeException("Role not found: " + targetRoleEnum));
+        
+        user.setRole(targetRoleEnum);
+        if (user.getUserRoles() == null) {
+            user.setUserRoles(new java.util.ArrayList<>());
+        }
+        
+        if (!user.getUserRoles().isEmpty()) {
+            UserRoleMapping firstMapping = user.getUserRoles().get(0);
+            firstMapping.setRole(targetRole);
+            while (user.getUserRoles().size() > 1) {
+                user.getUserRoles().remove(1);
+            }
+        } else {
+            user.getUserRoles().add(UserRoleMapping.builder()
+                    .user(user)
+                    .role(targetRole)
+                    .build());
+        }
+        
+        userRepository.save(user);
         return shopRepository.save(shop);
     }
 

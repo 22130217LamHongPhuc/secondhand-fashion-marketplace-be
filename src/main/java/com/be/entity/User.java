@@ -124,12 +124,18 @@ public class User implements UserDetails{
 
     @Override
     public Collection<? extends GrantedAuthority> getAuthorities() {
-        return userRoles.stream()
-                .map(UserRoleMapping::getRole)
-                .map(Role::getName)
-                .map(UserRole::name)
-                .map(SimpleGrantedAuthority::new)
-                .toList();
+        List<SimpleGrantedAuthority> authorities = new ArrayList<>();
+        if (role != null) {
+            authorities.add(new SimpleGrantedAuthority(role.name()));
+        }
+        if (userRoles != null) {
+            for (UserRoleMapping mapping : userRoles) {
+                if (mapping != null && mapping.getRole() != null && mapping.getRole().getName() != null) {
+                    authorities.add(new SimpleGrantedAuthority(mapping.getRole().getName().name()));
+                }
+            }
+        }
+        return authorities.stream().distinct().toList();
     }
 
     // Get primary role from userRoles relationship (for Spring Security)

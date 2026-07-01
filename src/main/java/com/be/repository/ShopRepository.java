@@ -23,5 +23,7 @@ public interface ShopRepository extends JpaRepository<Shop, Long> {
     org.springframework.data.domain.Page<Shop> findByIsActiveTrue(org.springframework.data.domain.Pageable pageable);
 
     org.springframework.data.domain.Page<Shop> findByNameContainingIgnoreCaseAndIsActiveTrue(String name, org.springframework.data.domain.Pageable pageable);
+
+    long countByIsActive(Boolean isActive);
 }
 

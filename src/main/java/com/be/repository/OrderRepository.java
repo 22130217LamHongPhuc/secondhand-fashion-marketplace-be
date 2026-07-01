@@ -123,6 +123,13 @@ public interface OrderRepository extends JpaRepository<Order, Long>, JpaSpecific
             Pageable pageable
     );
 
+    long countByCreatedAtAfter(LocalDateTime dateTime);
+    long countByCreatedAtBetween(LocalDateTime start, LocalDateTime end);
 
+    @Query("SELECT COALESCE(SUM(o.subtotal), 0) FROM Order o WHERE o.createdAt >= :startDate AND o.status = :status")
+    BigDecimal sumRevenueSince(@Param("startDate") LocalDateTime startDate, @Param("status") OrderStatus status);
+
+    @Query("SELECT COALESCE(SUM(o.subtotal), 0) FROM Order o WHERE o.createdAt BETWEEN :startDate AND :endDate AND o.status = :status")
+    BigDecimal sumRevenueBetween(@Param("startDate") LocalDateTime startDate, @Param("endDate") LocalDateTime endDate, @Param("status") OrderStatus status);
 }
 
