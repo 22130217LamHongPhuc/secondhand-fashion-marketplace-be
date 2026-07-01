@@ -97,7 +97,7 @@ public class ShopPromotionServiceImpl implements ShopPromotionService {
             promotion.setDescription(request.getDescription());
         }
         if (request.getEndDate() != null) {
-            if (!request.getEndDate().isAfter(promotion.getEndDate())) {
+            if (request.getEndDate().truncatedTo(java.time.temporal.ChronoUnit.MINUTES).isBefore(promotion.getEndDate().truncatedTo(java.time.temporal.ChronoUnit.MINUTES))) {
                 throw new IllegalArgumentException("Không thể rút ngắn ngày kết thúc của khuyến mãi đang tồn tại");
             }
             promotion.setEndDate(request.getEndDate());

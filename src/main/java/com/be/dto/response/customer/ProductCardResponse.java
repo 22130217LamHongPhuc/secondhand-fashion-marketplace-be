@@ -11,6 +11,7 @@ public record ProductCardResponse(
         BigDecimal discountAmount,
         String thumbnailUrl,
         Long shopId,
+        Long sellerId,
         String shopName,
         LocalDateTime createdAt
 ) {

@@ -148,6 +148,7 @@ public class CustomerProductServiceImpl implements CustomerProductService {
         return new ShopDetailWithProductsResponse(
                 new ShopInfoResponse(
                         shop.getId(),
+                        shop.getSeller() != null ? shop.getSeller().getId() : null,
                         shop.getName(),
                         shop.getSlug(),
                         shop.getDescription(),
@@ -183,7 +184,8 @@ public class CustomerProductServiceImpl implements CustomerProductService {
 
         var pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "createdAt", "id"));
         List<Long> allCategoryIds = expandCategoryIds(List.of(categoryId));
-        var productPage = productRepository.findByCategoryIdInAndIsActiveTrueAndIsApprovedTrue(allCategoryIds, pageable);
+        var productPage = productRepository.findByCategoryIdInAndIsActiveTrueAndIsApprovedTrue(allCategoryIds,
+                pageable);
 
         var items = productPage.getContent().stream()
                 .map(this::toProductCard)
@@ -207,6 +209,7 @@ public class CustomerProductServiceImpl implements CustomerProductService {
         var items = shopPage.getContent().stream()
                 .map(shop -> new ShopInfoResponse(
                         shop.getId(),
+                        shop.getSeller() != null ? shop.getSeller().getId() : null,
                         shop.getName(),
                         shop.getSlug(),
                         shop.getDescription(),
@@ -248,6 +251,7 @@ public class CustomerProductServiceImpl implements CustomerProductService {
         var items = shopPage.getContent().stream()
                 .map(shop -> new ShopInfoResponse(
                         shop.getId(),
+                        shop.getSeller() != null ? shop.getSeller().getId() : null,
                         shop.getName(),
                         shop.getSlug(),
                         shop.getDescription(),
@@ -403,8 +407,7 @@ public class CustomerProductServiceImpl implements CustomerProductService {
     private Specification<Product> isActiveTrueAndIsApprovedTrue() {
         return (root, query, cb) -> cb.and(
                 cb.isTrue(root.get("isActive")),
-                cb.isTrue(root.get("isApproved"))
-        );
+                cb.isTrue(root.get("isApproved")));
     }
 
     private Specification<Product> stockGreaterThanZero() {
@@ -507,6 +510,9 @@ public class CustomerProductServiceImpl implements CustomerProductService {
                 discountAmount,
                 getThumbnailUrl(product),
                 product.getShop() == null ? null : product.getShop().getId(),
+                (product.getShop() != null && product.getShop().getSeller() != null)
+                        ? product.getShop().getSeller().getId()
+                        : null,
                 product.getShop() == null ? null : product.getShop().getName(),
                 product.getCreatedAt());
     }
@@ -724,9 +730,8 @@ public class CustomerProductServiceImpl implements CustomerProductService {
         } catch (Exception e) {
             throw new RuntimeException("Invalid token", e);
         }
+        throw new AccessDeniedException("Authenticated customer is required");
 
-        return userRepository.findById(501L)
-                .orElseThrow(() -> new AccessDeniedException("Authenticated customer is required"));
     }
 
     private void validateReviewOwnership(User currentUser, Order order, Long productId) {
@@ -824,8 +829,7 @@ public class CustomerProductServiceImpl implements CustomerProductService {
 
     private static final List<String> METADATA_KEYS = List.of(
             "source:", "external_id:", "source_url:", "size:",
-            "location:", "sub_category:", "posted_at:", "raw_condition:", "status:"
-    );
+            "location:", "sub_category:", "posted_at:", "raw_condition:", "status:");
 
     private static class ParsedDescription {
         String cleanDescription;

@@ -30,7 +30,8 @@ public record SellerDashboardResponse(
     public record CategoryBreakdownEntry(
             String label,
             Integer percent,
-            String color
+            String color,
+            BigDecimal revenue
     ) {}
 
     public record NotificationEntry(

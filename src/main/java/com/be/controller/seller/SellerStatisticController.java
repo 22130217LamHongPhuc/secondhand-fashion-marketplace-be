@@ -44,4 +44,17 @@ public class SellerStatisticController {
         }
         return ResponseEntity.ok(ApiResponse.success(data, "Lấy dữ liệu thống kê thành công"));
     }
+    @GetMapping("/category-breakdown")
+    public ResponseEntity<ApiResponse<java.util.List<SellerDashboardResponse.CategoryBreakdownEntry>>> getCategoryBreakdown(
+            @RequestParam(defaultValue = "0") int month,
+            @RequestParam(defaultValue = "0") int year
+    ) {
+        if (month <= 0 || year <= 0) {
+            java.time.LocalDate now = java.time.LocalDate.now();
+            month = now.getMonthValue();
+            year = now.getYear();
+        }
+        var data = sellerStatisticService.getCategoryBreakdown(month, year);
+        return ResponseEntity.ok(ApiResponse.success(data, "Lấy dữ liệu danh mục thành công"));
+    }
 }

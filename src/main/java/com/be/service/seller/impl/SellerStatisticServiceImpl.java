@@ -50,29 +50,26 @@ public class SellerStatisticServiceImpl implements SellerStatisticService {
         LocalDateTime endDateTime;
         LocalDateTime prevPeriodStart;
         LocalDateTime prevPeriodEnd;
+        long daysDiff;
 
-        if (startDate != null && endDate != null) {
-            startDateTime = startDate.atStartOfDay();
-            endDateTime = endDate.plusDays(1).atStartOfDay();
-            
-            long days = ChronoUnit.DAYS.between(startDate, endDate) + 1;
-            prevPeriodStart = startDateTime.minusDays(days);
-            prevPeriodEnd = startDateTime;
-        } else {
-            // Use revenuePeriod
-            endDateTime = LocalDate.now().plusDays(1).atStartOfDay(); // exclusive end
-            
-            long days = 30; // default to 30 days
+        if (startDate == null || endDate == null) {
+            LocalDate todayDate = LocalDate.now();
+            long days = 30;
             if ("7_DAYS".equals(revenuePeriod)) {
                 days = 7;
             } else if ("90_DAYS".equals(revenuePeriod)) {
                 days = 90;
             }
-            
-            startDateTime = endDateTime.minusDays(days);
-            prevPeriodStart = startDateTime.minusDays(days);
-            prevPeriodEnd = startDateTime;
+            startDate = todayDate.minusDays(days - 1);
+            endDate = todayDate;
         }
+
+        startDateTime = startDate.atStartOfDay();
+        endDateTime = endDate.plusDays(1).atStartOfDay();
+        
+        daysDiff = ChronoUnit.DAYS.between(startDate, endDate) + 1;
+        prevPeriodStart = startDateTime.minusDays(daysDiff);
+        prevPeriodEnd = startDateTime;
 
         BigDecimal currentPeriodRevenue = statisticRepository.getRevenueByPeriod(resolvedShopId, startDateTime, endDateTime);
         BigDecimal prevPeriodRevenue = statisticRepository.getRevenueByPeriod(resolvedShopId, prevPeriodStart, prevPeriodEnd);
@@ -123,26 +120,112 @@ public class SellerStatisticServiceImpl implements SellerStatisticService {
                 totalRevenue, growth, trend, pendingOrders, avatars, extraOrdersCount, totalProducts, activeProducts, pendingProducts
         );
 
-        // Revenue Chart (4 segments/weeks)
-        long totalSeconds = ChronoUnit.SECONDS.between(startDateTime, endDateTime);
-        long segmentSeconds = totalSeconds / 4;
+        // Dynamic Revenue Chart Grouping
+        List<SellerDashboardResponse.RevenueChartEntry> chart = new ArrayList<>();
+        long monthsDiff = ChronoUnit.MONTHS.between(startDate.withDayOfMonth(1), endDate.withDayOfMonth(1)) + 1;
+        long yearsDiff = ChronoUnit.YEARS.between(startDate.withDayOfMonth(1).withMonth(1), endDate.withDayOfMonth(1).withMonth(1)) + 1;
 
-        BigDecimal currentSeg1 = statisticRepository.getRevenueByPeriod(resolvedShopId, startDateTime, startDateTime.plusSeconds(segmentSeconds));
-        BigDecimal currentSeg2 = statisticRepository.getRevenueByPeriod(resolvedShopId, startDateTime.plusSeconds(segmentSeconds), startDateTime.plusSeconds(2 * segmentSeconds));
-        BigDecimal currentSeg3 = statisticRepository.getRevenueByPeriod(resolvedShopId, startDateTime.plusSeconds(2 * segmentSeconds), startDateTime.plusSeconds(3 * segmentSeconds));
-        BigDecimal currentSeg4 = statisticRepository.getRevenueByPeriod(resolvedShopId, startDateTime.plusSeconds(3 * segmentSeconds), endDateTime);
+        if (monthsDiff > 12) {
+            // Group by calendar Year
+            List<LocalDateTime[]> currentSegments = new ArrayList<>();
+            List<String> labels = new ArrayList<>();
+            int startYear = startDate.getYear();
+            int endYear = endDate.getYear();
 
-        BigDecimal prevSeg1 = statisticRepository.getRevenueByPeriod(resolvedShopId, prevPeriodStart, prevPeriodStart.plusSeconds(segmentSeconds));
-        BigDecimal prevSeg2 = statisticRepository.getRevenueByPeriod(resolvedShopId, prevPeriodStart.plusSeconds(segmentSeconds), prevPeriodStart.plusSeconds(2 * segmentSeconds));
-        BigDecimal prevSeg3 = statisticRepository.getRevenueByPeriod(resolvedShopId, prevPeriodStart.plusSeconds(2 * segmentSeconds), prevPeriodStart.plusSeconds(3 * segmentSeconds));
-        BigDecimal prevSeg4 = statisticRepository.getRevenueByPeriod(resolvedShopId, prevPeriodStart.plusSeconds(3 * segmentSeconds), prevPeriodEnd);
+            for (int year = startYear; year <= endYear; year++) {
+                LocalDateTime segStart = LocalDate.of(year, 1, 1).atStartOfDay();
+                if (segStart.isBefore(startDateTime)) {
+                    segStart = startDateTime;
+                }
+                LocalDateTime segEnd = LocalDate.of(year + 1, 1, 1).atStartOfDay();
+                if (segEnd.isAfter(endDateTime)) {
+                    segEnd = endDateTime;
+                }
+                currentSegments.add(new LocalDateTime[]{segStart, segEnd});
+                labels.add("NĂM " + year);
+            }
 
-        List<SellerDashboardResponse.RevenueChartEntry> chart = List.of(
-                new SellerDashboardResponse.RevenueChartEntry("TUẦN 1", prevSeg1, currentSeg1),
-                new SellerDashboardResponse.RevenueChartEntry("TUẦN 2", prevSeg2, currentSeg2),
-                new SellerDashboardResponse.RevenueChartEntry("TUẦN 3", prevSeg3, currentSeg3),
-                new SellerDashboardResponse.RevenueChartEntry("TUẦN 4", prevSeg4, currentSeg4)
-        );
+            for (int i = 0; i < currentSegments.size(); i++) {
+                LocalDateTime[] seg = currentSegments.get(i);
+                LocalDateTime segStart = seg[0];
+                LocalDateTime segEnd = seg[1];
+
+                LocalDateTime prevSegStart = segStart.minusYears(yearsDiff);
+                LocalDateTime prevSegEnd = segEnd.minusYears(yearsDiff);
+
+                BigDecimal currentRevenue = statisticRepository.getRevenueByPeriod(resolvedShopId, segStart, segEnd);
+                BigDecimal prevRevenue = statisticRepository.getRevenueByPeriod(resolvedShopId, prevSegStart, prevSegEnd);
+
+                chart.add(new SellerDashboardResponse.RevenueChartEntry(labels.get(i), prevRevenue, currentRevenue));
+            }
+        } else if (daysDiff > 30) {
+            // Group by calendar Month
+            List<LocalDateTime[]> currentSegments = new ArrayList<>();
+            List<String> labels = new ArrayList<>();
+            LocalDate currentMonth = startDate.withDayOfMonth(1);
+            LocalDate endMonth = endDate.withDayOfMonth(1);
+
+            while (!currentMonth.isAfter(endMonth)) {
+                LocalDateTime segStart = currentMonth.atStartOfDay();
+                if (segStart.isBefore(startDateTime)) {
+                    segStart = startDateTime;
+                }
+                LocalDateTime segEnd = currentMonth.plusMonths(1).atStartOfDay();
+                if (segEnd.isAfter(endDateTime)) {
+                    segEnd = endDateTime;
+                }
+                currentSegments.add(new LocalDateTime[]{segStart, segEnd});
+                labels.add("THÁNG " + currentMonth.getMonthValue() + "/" + (currentMonth.getYear() % 100));
+
+                currentMonth = currentMonth.plusMonths(1);
+            }
+
+            for (int i = 0; i < currentSegments.size(); i++) {
+                LocalDateTime[] seg = currentSegments.get(i);
+                LocalDateTime segStart = seg[0];
+                LocalDateTime segEnd = seg[1];
+
+                LocalDateTime prevSegStart = segStart.minusMonths((int) monthsDiff);
+                LocalDateTime prevSegEnd = segEnd.minusMonths((int) monthsDiff);
+
+                BigDecimal currentRevenue = statisticRepository.getRevenueByPeriod(resolvedShopId, segStart, segEnd);
+                BigDecimal prevRevenue = statisticRepository.getRevenueByPeriod(resolvedShopId, prevSegStart, prevSegEnd);
+
+                chart.add(new SellerDashboardResponse.RevenueChartEntry(labels.get(i), prevRevenue, currentRevenue));
+            }
+        } else if (daysDiff > 10) {
+            // Group by Week (4 segments)
+            long totalSeconds = ChronoUnit.SECONDS.between(startDateTime, endDateTime);
+            long segmentSeconds = totalSeconds / 4;
+
+            for (int i = 0; i < 4; i++) {
+                LocalDateTime currSegStart = startDateTime.plusSeconds(i * segmentSeconds);
+                LocalDateTime currSegEnd = (i == 3) ? endDateTime : startDateTime.plusSeconds((i + 1) * segmentSeconds);
+                LocalDateTime prevSegStart = prevPeriodStart.plusSeconds(i * segmentSeconds);
+                LocalDateTime prevSegEnd = (i == 3) ? prevPeriodEnd : prevPeriodStart.plusSeconds((i + 1) * segmentSeconds);
+
+                BigDecimal currentRevenue = statisticRepository.getRevenueByPeriod(resolvedShopId, currSegStart, currSegEnd);
+                BigDecimal prevRevenue = statisticRepository.getRevenueByPeriod(resolvedShopId, prevSegStart, prevSegEnd);
+
+                String label = "TUẦN " + (i + 1);
+                chart.add(new SellerDashboardResponse.RevenueChartEntry(label, prevRevenue, currentRevenue));
+            }
+        } else {
+            // Group by Day
+            int d = (int) daysDiff;
+            for (int i = 0; i < d; i++) {
+                LocalDateTime currDayStart = startDateTime.plusDays(i);
+                LocalDateTime currDayEnd = currDayStart.plusDays(1);
+                LocalDateTime prevDayStart = prevPeriodStart.plusDays(i);
+                LocalDateTime prevDayEnd = prevDayStart.plusDays(1);
+
+                BigDecimal currentRevenue = statisticRepository.getRevenueByPeriod(resolvedShopId, currDayStart, currDayEnd);
+                BigDecimal prevRevenue = statisticRepository.getRevenueByPeriod(resolvedShopId, prevDayStart, prevDayEnd);
+
+                String label = currDayStart.format(DateTimeFormatter.ofPattern("dd/MM"));
+                chart.add(new SellerDashboardResponse.RevenueChartEntry(label, prevRevenue, currentRevenue));
+            }
+        }
 
         // Category Breakdown
         List<SellerStatisticRepository.ICategoryDistributionProjection> categoryProjections = statisticRepository.getCategoryDistribution(resolvedShopId);
@@ -154,7 +237,7 @@ public class SellerStatisticServiceImpl implements SellerStatisticService {
                 ? cat.getTotalSubtotal().multiply(new BigDecimal("100")).divide(sumCategories, RoundingMode.HALF_UP).intValue() 
                 : 0;
             breakdown.add(new SellerDashboardResponse.CategoryBreakdownEntry(
-                    cat.getCategoryName(), percent, CATEGORY_COLORS[colorIdx % CATEGORY_COLORS.length]
+                    cat.getCategoryName(), percent, CATEGORY_COLORS[colorIdx % CATEGORY_COLORS.length], cat.getTotalSubtotal()
             ));
             colorIdx++;
         }
@@ -268,5 +351,35 @@ public class SellerStatisticServiceImpl implements SellerStatisticService {
         );
 
         return new SellerAnalyticsResponse(repSummary, metrics, pageData);
+    }
+
+    @Override
+    public List<SellerDashboardResponse.CategoryBreakdownEntry> getCategoryBreakdown(int month, int year) {
+        Shop shop = authHelper.getCurrentSellerShop();
+        Long resolvedShopId = shop.getId();
+
+        YearMonth ym = YearMonth.of(year, month);
+        LocalDateTime startDateTime = ym.atDay(1).atStartOfDay();
+        LocalDateTime endDateTime = ym.plusMonths(1).atDay(1).atStartOfDay();
+
+        List<SellerStatisticRepository.ICategoryDistributionProjection> categoryProjections =
+                statisticRepository.getCategoryDistributionByPeriod(resolvedShopId, startDateTime, endDateTime);
+
+        BigDecimal sumCategories = categoryProjections.stream()
+                .map(SellerStatisticRepository.ICategoryDistributionProjection::getTotalSubtotal)
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
+
+        List<SellerDashboardResponse.CategoryBreakdownEntry> breakdown = new ArrayList<>();
+        int colorIdx = 0;
+        for (SellerStatisticRepository.ICategoryDistributionProjection cat : categoryProjections) {
+            int percent = sumCategories.compareTo(BigDecimal.ZERO) > 0
+                    ? cat.getTotalSubtotal().multiply(new BigDecimal("100")).divide(sumCategories, RoundingMode.HALF_UP).intValue()
+                    : 0;
+            breakdown.add(new SellerDashboardResponse.CategoryBreakdownEntry(
+                    cat.getCategoryName(), percent, CATEGORY_COLORS[colorIdx % CATEGORY_COLORS.length], cat.getTotalSubtotal()
+            ));
+            colorIdx++;
+        }
+        return breakdown;
     }
 }

@@ -5,6 +5,7 @@ import java.time.LocalDateTime;
 
 public record ShopInfoResponse(
         Long id,
+        Long sellerId,
         String name,
         String slug,
         String description,

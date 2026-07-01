@@ -44,6 +44,25 @@ public interface SellerStatisticRepository extends JpaRepository<Shop, Long> {
 
     @Query(value = """
             SELECT 
+              c.name AS categoryName,
+              SUM(oi.subtotal) AS totalSubtotal
+            FROM order_items oi
+            JOIN products p ON oi.product_id = p.id
+            JOIN categories c ON p.category_id = c.id
+            JOIN orders o ON oi.order_id = o.id
+            WHERE o.status = 'DONE' AND o.shop_id = :shopId
+              AND o.created_at >= :startDateTime AND o.created_at < :endDateTime
+            GROUP BY c.name
+            ORDER BY totalSubtotal DESC
+            """, nativeQuery = true)
+    List<ICategoryDistributionProjection> getCategoryDistributionByPeriod(
+            @Param("shopId") Long shopId,
+            @Param("startDateTime") LocalDateTime startDateTime,
+            @Param("endDateTime") LocalDateTime endDateTime
+    );
+
+    @Query(value = """
+            SELECT 
               COALESCE(SUM(CASE WHEN DAY(o.created_at) BETWEEN 1 AND 7 THEN o.subtotal ELSE 0 END), 0) AS week1,
               COALESCE(SUM(CASE WHEN DAY(o.created_at) BETWEEN 8 AND 14 THEN o.subtotal ELSE 0 END), 0) AS week2,
               COALESCE(SUM(CASE WHEN DAY(o.created_at) BETWEEN 15 AND 21 THEN o.subtotal ELSE 0 END), 0) AS week3,
