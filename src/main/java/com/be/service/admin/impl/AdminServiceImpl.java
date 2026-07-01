@@ -59,6 +59,10 @@ public class AdminServiceImpl implements AdminService {
         long totalUsers = userRepository.count();
         long totalOrders = orderRepository.count();
 
+        List<Shop> nonAdminShops = shopRepository.findAll().stream()
+                .filter(shop -> shop.getSeller() != null && shop.getSeller().getRole() != UserRole.ADMIN)
+                .collect(java.util.stream.Collectors.toList());
+
         java.time.LocalDateTime thirtyDaysAgo = java.time.LocalDateTime.now().minusDays(30);
         java.time.LocalDateTime sixtyDaysAgo = java.time.LocalDateTime.now().minusDays(60);
 
@@ -74,6 +78,10 @@ public class AdminServiceImpl implements AdminService {
         BigDecimal revenueThisMonth = orderRepository.sumRevenueSince(thirtyDaysAgo, OrderStatus.DONE);
         BigDecimal revenuePrevMonth = orderRepository.sumRevenueBetween(sixtyDaysAgo, thirtyDaysAgo, OrderStatus.DONE);
         double revenueGrowth = calculateGrowthPercentage(revenueThisMonth.doubleValue(), revenuePrevMonth.doubleValue());
+
+        long shopsThisMonth = shopRepository.countByCreatedAtAfter(thirtyDaysAgo);
+        long shopsPrevMonth = shopRepository.countByCreatedAtBetween(sixtyDaysAgo, thirtyDaysAgo);
+        double shopGrowth = calculateGrowthPercentage(shopsThisMonth, shopsPrevMonth);
 
         // Order counts by status
         long pendingOrders = orderRepository.countByStatus(OrderStatus.PENDING);
@@ -95,6 +103,8 @@ public class AdminServiceImpl implements AdminService {
         return AdminDashboardResponse.builder()
                 .totalUsers(totalUsers)
                 .totalSellers(userRepository.countByRole(UserRole.SELLER))
+                .totalCustomers(userRepository.countByRole(UserRole.CUSTOMER))
+                .totalAdmins(userRepository.countByRole(UserRole.ADMIN))
                 .totalProducts(productRepository.count())
                 .totalOrders(totalOrders)
                 .totalRevenue(totalRevenue)
@@ -110,10 +120,11 @@ public class AdminServiceImpl implements AdminService {
                 .userGrowth(userGrowth)
                 .orderGrowth(orderGrowth)
                 .revenueGrowth(revenueGrowth)
+                .shopGrowth(shopGrowth)
                 .pendingComplaints(complaintRepository.countByStatus(com.be.common.enums.ComplaintStatus.PENDING))
-                .totalShops(shopRepository.count())
-                .activeShops(shopRepository.countByIsActive(true))
-                .verifiedShops(shopRepository.countByIsVerified(true))
+                .totalShops(nonAdminShops.size())
+                .activeShops(nonAdminShops.stream().filter(Shop::getIsActive).count())
+                .verifiedShops(nonAdminShops.stream().filter(Shop::getIsVerified).count())
                 .recentOrders(orderRepository.findAll(org.springframework.data.domain.PageRequest.of(0, 5, org.springframework.data.domain.Sort.by(org.springframework.data.domain.Sort.Direction.DESC, "createdAt")))
                         .getContent().stream()
                         .map(order -> AdminDashboardResponse.OrderSummary.builder()
@@ -228,7 +239,9 @@ public class AdminServiceImpl implements AdminService {
     // ============ SHOP MANAGEMENT ============
     @Override
     public List<Shop> getAllShops() {
-        return shopRepository.findAll();
+        return shopRepository.findAll().stream()
+                .filter(shop -> shop.getSeller() != null && shop.getSeller().getRole() != UserRole.ADMIN)
+                .collect(java.util.stream.Collectors.toList());
     }
 
     @Override
