@@ -62,7 +62,6 @@ import org.springframework.scheduling.annotation.Scheduled;
 @RequiredArgsConstructor
 @Slf4j
 public class CustomerOrderServiceImpl implements CustomerOrderService {
-
     private final OrderRepository orderRepository;
     private final OrderStatusLogRepository orderStatusLogRepository;
     private final CouponRepository couponRepository;
@@ -78,6 +77,14 @@ public class CustomerOrderServiceImpl implements CustomerOrderService {
     private final PromotionService promotionService;
     private final GhnShippingService ghnShippingService;
     private final UserPromotionRepository userPromotionRepository;
+
+    private BigDecimal getEffectivePrice(Product product) {
+        BigDecimal salePrice = product.getSalePrice();
+        if (salePrice != null && salePrice.compareTo(BigDecimal.ZERO) > 0) {
+            return salePrice;
+        }
+        return product.getBasePrice();
+    }
 
     private BigDecimal calculateOrderPayableAmount(Order order) {
         BigDecimal subtotal = order.getSubtotal() != null ? order.getSubtotal() : BigDecimal.ZERO;
@@ -318,7 +325,7 @@ public class CustomerOrderServiceImpl implements CustomerOrderService {
 
             for (CheckoutItem ci : entry.getValue()) {
                 Product p = productCache.get(ci.getProductId());
-                BigDecimal price = p.getSalePrice() != null ? p.getSalePrice() : p.getBasePrice();
+                BigDecimal price = getEffectivePrice(p);
                 subtotal = subtotal.add(price.multiply(BigDecimal.valueOf(ci.getQuantity())));
 
                 int qty = ci.getQuantity();
@@ -457,7 +464,7 @@ public class CustomerOrderServiceImpl implements CustomerOrderService {
 
             for (CheckoutItem ci : items) {
                 Product p = productCache.get(ci.getProductId());
-                BigDecimal price = p.getSalePrice() != null ? p.getSalePrice() : p.getBasePrice();
+                BigDecimal price = getEffectivePrice(p);
                 BigDecimal itemSubtotal = price.multiply(BigDecimal.valueOf(ci.getQuantity()));
                 subtotal = subtotal.add(itemSubtotal);
 

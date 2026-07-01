@@ -110,7 +110,10 @@ public class GhnShippingService {
                 maxLength = Math.max(maxLength, defaultInt(product.getLength(), 20));
                 maxWidth = Math.max(maxWidth, defaultInt(product.getWidth(), 15));
                 totalHeight += defaultInt(product.getHeight(), 5) * qty;
-                BigDecimal price = product.getSalePrice() != null ? product.getSalePrice() : product.getBasePrice();
+                BigDecimal salePrice = product.getSalePrice();
+                BigDecimal price = salePrice != null && salePrice.compareTo(BigDecimal.ZERO) > 0
+                        ? salePrice
+                        : product.getBasePrice();
                 insuranceValue = insuranceValue.add(price.multiply(BigDecimal.valueOf(qty)));
             }
 

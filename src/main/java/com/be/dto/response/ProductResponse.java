@@ -56,7 +56,10 @@ public class ProductResponse {
     public static ProductResponse fromEntity(Product product) {
         String categoryName = product.getCategory() != null ? product.getCategory().getName() : "Chưa phân loại";
         String sellerName = product.getShop() != null ? product.getShop().getName() : "Cửa hàng";
-        BigDecimal price = product.getSalePrice() != null ? product.getSalePrice() : product.getBasePrice();
+        BigDecimal salePrice = product.getSalePrice();
+        BigDecimal price = salePrice != null && salePrice.compareTo(BigDecimal.ZERO) > 0
+                ? salePrice
+                : product.getBasePrice();
         String status = "pending";
         if (Boolean.TRUE.equals(product.getIsApproved())) {
             status = Boolean.TRUE.equals(product.getIsActive()) ? "selling" : "locked";
@@ -102,4 +105,5 @@ public class ProductResponse {
                         .build() : null)
                 .build();
     }
+
 }
