@@ -17,4 +17,5 @@ public interface ComplaintRepository extends JpaRepository<Complaint, Long> {
     List<Complaint> findByReporterId(Long reporterId);
     Optional<Complaint> findByOrderId(Long orderId);
     boolean existsByOrderId(Long orderId);
+    long countByStatus(ComplaintStatus status);
 }

@@ -64,7 +64,8 @@ public class SellerShopServiceImpl implements SellerShopService {
                 .name(request.name().trim())
                 .slug(slug)
                 .description(request.description() != null ? request.description().trim() : null)
-                .isActive(true)
+                .isActive(false) // Mặc định chưa kích hoạt cho đến khi Admin duyệt
+                .isVerified(false) // Mặc định chưa xác minh
                 .avatarUrl(avatarUrl)
                 .bannerUrl(bannerUrl)
                 .provinceId(request.provinceId())

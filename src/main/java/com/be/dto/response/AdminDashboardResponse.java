@@ -19,6 +19,27 @@ public class AdminDashboardResponse {
     private BigDecimal totalRevenue;
     private long activeUsers;
     private long pendingOrders;
+
+    // New fields
+    private long totalShops;
+    private long activeShops;
+    private long verifiedShops;
+
+    private long confirmedOrders;
+    private long shippingOrders;
+    private long completedOrders;
+    private long cancelledOrders;
+    private long returnedOrders;
+
+    private double cancellationRate;
+    private double returnRate;
+
+    private double userGrowth;
+    private double orderGrowth;
+    private double revenueGrowth;
+
+    private long pendingComplaints;
+
     private java.util.List<OrderSummary> recentOrders;
 
     @Data
