@@ -14,6 +14,8 @@ import java.math.BigDecimal;
 public class AdminDashboardResponse {
     private long totalUsers;
     private long totalSellers;
+    private long totalCustomers;
+    private long totalAdmins;
     private long totalProducts;
     private long totalOrders;
     private BigDecimal totalRevenue;
@@ -37,6 +39,7 @@ public class AdminDashboardResponse {
     private double userGrowth;
     private double orderGrowth;
     private double revenueGrowth;
+    private double shopGrowth;
 
     private long pendingComplaints;
 
